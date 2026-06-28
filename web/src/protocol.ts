@@ -1,6 +1,6 @@
 // Protocol types — mirror of the backend contract. TYPES ONLY.
 
-export type PermissionMode = "default" | "acceptEdits" | "plan";
+export type PermissionMode = "default" | "acceptEdits" | "plan" | "bypassPermissions";
 
 export interface Repo {
   id: string;

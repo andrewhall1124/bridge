@@ -3,7 +3,15 @@ import { api } from "../api";
 import type { PermissionMode, Repo, Settings as SettingsType } from "../protocol";
 
 const MODEL_SUGGESTIONS = ["opus", "sonnet", "haiku"];
-const MODES: PermissionMode[] = ["default", "acceptEdits", "plan"];
+const MODE_OPTIONS: { value: PermissionMode; label: string }[] = [
+  { value: "default", label: "default — ask before write/edit/run" },
+  { value: "acceptEdits", label: "acceptEdits — auto-approve file edits only" },
+  { value: "plan", label: "plan — explore only, no execution" },
+  {
+    value: "bypassPermissions",
+    label: "bypassPermissions — run everything unprompted ⚠",
+  },
+];
 
 export function Settings({ repos }: { repos: Repo[] }) {
   const [settings, setSettings] = useState<SettingsType | null>(null);
@@ -87,12 +95,19 @@ export function Settings({ repos }: { repos: Repo[] }) {
             })
           }
         >
-          {MODES.map((m) => (
-            <option key={m} value={m}>
-              {m}
+          {MODE_OPTIONS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
             </option>
           ))}
         </select>
+        {settings.defaultPermissionMode === "bypassPermissions" && (
+          <span className="system-line error" style={{ marginTop: 6 }}>
+            ⚠ bypassPermissions lets the agent read, write, and run anything in
+            new sessions without asking. Only use this on a trusted, tailnet-only
+            box. Applies to sessions created after saving.
+          </span>
+        )}
       </label>
 
       <div className="settings-actions">

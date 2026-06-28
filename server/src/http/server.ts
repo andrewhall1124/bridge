@@ -40,7 +40,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     if (typeof body.defaultModel === "string") patch.defaultModel = body.defaultModel;
     if (
       body.defaultPermissionMode &&
-      ["default", "acceptEdits", "plan"].includes(body.defaultPermissionMode)
+      ["default", "acceptEdits", "plan", "bypassPermissions"].includes(
+        body.defaultPermissionMode,
+      )
     )
       patch.defaultPermissionMode = body.defaultPermissionMode as PermissionMode;
     return dbm.updateSettings(patch);

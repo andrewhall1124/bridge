@@ -219,6 +219,11 @@ function startSession(sessionId: string): ActiveSession {
     cwd: repo.path,
     model: settings.defaultModel,
     permissionMode: sdkPermissionMode(permissionMode),
+    // The SDK requires this opt-in before bypassPermissions can ever take
+    // effect. We only enable it when the session actually starts in bypass
+    // mode (chosen deliberately in Settings), so it can't silently widen
+    // privilege on a normal session.
+    allowDangerouslySkipPermissions: permissionMode === "bypassPermissions",
     includePartialMessages: true,
     canUseTool: buildCanUseTool(sessionId, getSelf),
     env: agentEnv(),

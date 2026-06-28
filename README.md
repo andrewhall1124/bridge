@@ -200,7 +200,7 @@ WantedBy=multi-user.target
 | `dbPath`                | `DB_PATH`                  | `./data/bridge.sqlite`| SQLite file |
 | `anthropicApiKey`       | `ANTHROPIC_API_KEY`        | unset                 | **Unset = subscription billing.** Set = API-key billing |
 | `defaultModel`          | `DEFAULT_MODEL`            | `sonnet`              | SDK alias: `opus` / `sonnet` / `haiku`, or an exact id |
-| `defaultPermissionMode` | `DEFAULT_PERMISSION_MODE`  | `default`             | `default` / `acceptEdits` / `plan` |
+| `defaultPermissionMode` | `DEFAULT_PERMISSION_MODE`  | `default`             | `default` / `acceptEdits` / `plan` / `bypassPermissions` (⚠ runs everything unprompted) |
 | `jobConcurrency`        | `JOB_CONCURRENCY`          | `1`                   | Jobs run concurrently (queue) |
 | `repos`                 | `REPOS` / `REPOS_DIR`      | —                     | Repo registry |
 

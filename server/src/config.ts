@@ -31,7 +31,12 @@ interface FileConfig {
   reposDir?: string;
 }
 
-const DEFAULT_PERMISSION_MODES: PermissionMode[] = ["default", "acceptEdits", "plan"];
+const DEFAULT_PERMISSION_MODES: PermissionMode[] = [
+  "default",
+  "acceptEdits",
+  "plan",
+  "bypassPermissions",
+];
 
 function asPermissionMode(value: string | undefined, fallback: PermissionMode): PermissionMode {
   if (value && (DEFAULT_PERMISSION_MODES as string[]).includes(value)) {
