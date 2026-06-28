@@ -223,6 +223,11 @@ in the Settings tab (stored in SQLite, seeded from config on first boot).
   `plan`, or `bypassPermissions`. Changing it applies to the running session immediately
   and is reported back over the WebSocket, so you can always see (and confirm) which mode
   is in effect. In `bypassPermissions` no approval prompts appear and tools run unprompted.
+- **Questions:** when Claude uses the `AskUserQuestion` tool, Bridge renders a proper
+  question picker (each question's options as single- or multi-select, plus an "Other"
+  free-text field) instead of a generic approve/reject. Your selection is delivered back
+  to the model as the tool's answer. Unattended **jobs** auto-decline questions (no human
+  is available) so they never hang.
 - **Jobs** run unattended with auto-approval so they never block, recording a transcript,
   a short result summary, and the list of changed files.
 - **Code & diff:** all repo file/diff/commit/discard operations are scoped to the repo

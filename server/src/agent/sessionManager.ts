@@ -12,7 +12,54 @@ import { getConfig } from "../config.js";
 import { log } from "../logger.js";
 import { emitSession } from "../bus.js";
 import * as dbm from "../db.js";
-import type { PermissionMode } from "../protocol.js";
+import type { PermissionMode, QuestionAnswer, QuestionItem } from "../protocol.js";
+
+const ASK_TOOL = "AskUserQuestion";
+
+// Parse the AskUserQuestion tool input into our QuestionItem[] shape, tolerating
+// missing/extra fields from the model.
+function parseQuestions(input: Record<string, unknown>): QuestionItem[] {
+  const raw = (input as { questions?: unknown }).questions;
+  if (!Array.isArray(raw)) return [];
+  const items: QuestionItem[] = [];
+  for (const q of raw) {
+    if (!q || typeof q !== "object") continue;
+    const obj = q as Record<string, unknown>;
+    const options = Array.isArray(obj.options)
+      ? (obj.options as Record<string, unknown>[]).map((o) => ({
+          label: String(o?.label ?? ""),
+          description: String(o?.description ?? ""),
+          ...(typeof o?.preview === "string" ? { preview: o.preview } : {}),
+        }))
+      : [];
+    items.push({
+      question: String(obj.question ?? ""),
+      header: String(obj.header ?? ""),
+      multiSelect: Boolean(obj.multiSelect),
+      options,
+    });
+  }
+  return items;
+}
+
+// Turn the user's selections into a clear natural-language tool result so the
+// model treats it as the answer (delivered via canUseTool's deny message — the
+// only channel that conveys free text back through the permission callback).
+function formatAnswers(questions: QuestionItem[], answers: QuestionAnswer[]): string {
+  const byQuestion = new Map(answers.map((a) => [a.question, a]));
+  const lines: string[] = ["The user answered your question(s):"];
+  for (const q of questions) {
+    const a = byQuestion.get(q.question);
+    const picked = a?.selected?.length ? a.selected.join(", ") : null;
+    const free = a?.freeform?.trim();
+    const value = [picked, free ? `(other: ${free})` : null].filter(Boolean).join(" ");
+    lines.push(`- ${q.header ? `[${q.header}] ` : ""}${q.question}\n  → ${value || "(no answer)"}`);
+  }
+  lines.push(
+    "Use these answers and continue. Do not call AskUserQuestion again to re-ask the same thing.",
+  );
+  return lines.join("\n");
+}
 
 const config = getConfig();
 
@@ -29,6 +76,8 @@ function agentEnv(): Record<string, string | undefined> {
 
 interface PendingApproval {
   resolve: (result: PermissionResult) => void;
+  // Present when the pending request is an AskUserQuestion (vs a tool approval).
+  questions?: QuestionItem[];
 }
 
 interface ActiveSession {
@@ -66,24 +115,47 @@ function buildCanUseTool(sessionId: string, sess: () => ActiveSession | undefine
     const current = sess();
     if (!current) return { behavior: "allow" };
 
+    // AskUserQuestion is the model asking the *owner* a question — render it as
+    // a question picker rather than a generic approve/reject.
+    const isQuestion = toolName === ASK_TOOL;
+    const questions = isQuestion ? parseQuestions(input) : [];
+
     return await new Promise<PermissionResult>((resolve) => {
-      current.pending.set(requestId, { resolve });
+      current.pending.set(requestId, {
+        resolve,
+        ...(isQuestion ? { questions } : {}),
+      });
 
       const onAbort = () => {
         if (current.pending.delete(requestId)) {
-          resolve({ behavior: "deny", message: "Interrupted before approval." });
+          resolve({
+            behavior: "deny",
+            message: isQuestion
+              ? "The question was dismissed without an answer."
+              : "Interrupted before approval.",
+          });
         }
       };
       opts.signal.addEventListener("abort", onAbort, { once: true });
 
-      emitSession(sessionId, {
-        type: "approval_request",
-        sessionId,
-        requestId,
-        toolName,
-        toolUseId: opts.toolUseID,
-        input,
-      });
+      if (isQuestion && questions.length > 0) {
+        emitSession(sessionId, {
+          type: "question_request",
+          sessionId,
+          requestId,
+          toolUseId: opts.toolUseID,
+          questions,
+        });
+      } else {
+        emitSession(sessionId, {
+          type: "approval_request",
+          sessionId,
+          requestId,
+          toolName,
+          toolUseId: opts.toolUseID,
+          input,
+        });
+      }
     });
   };
 }
@@ -290,6 +362,32 @@ export function resolveApproval(
   emitSession(sessionId, { type: "approval_resolved", sessionId, requestId });
 }
 
+export function resolveQuestion(
+  sessionId: string,
+  requestId: string,
+  answers: QuestionAnswer[],
+  cancelled?: boolean,
+): void {
+  const sess = active.get(sessionId);
+  if (!sess) return;
+  const pending = sess.pending.get(requestId);
+  if (!pending) return;
+  sess.pending.delete(requestId);
+  if (cancelled) {
+    pending.resolve({
+      behavior: "deny",
+      message:
+        "The user dismissed the question without answering. Use your best judgment with reasonable defaults; only ask again if it is truly essential.",
+    });
+  } else {
+    pending.resolve({
+      behavior: "deny",
+      message: formatAnswers(pending.questions ?? [], answers),
+    });
+  }
+  emitSession(sessionId, { type: "approval_resolved", sessionId, requestId });
+}
+
 export async function interrupt(sessionId: string): Promise<void> {
   const sess = active.get(sessionId);
   if (!sess) return;
@@ -362,7 +460,18 @@ export async function runJob(
     model: settings.defaultModel,
     permissionMode: "acceptEdits",
     includePartialMessages: false,
-    canUseTool: async () => ({ behavior: "allow" }),
+    // Unattended: no human to answer AskUserQuestion, so decline it with
+    // guidance instead of blocking forever. Auto-approve everything else.
+    canUseTool: async (toolName: string) => {
+      if (toolName === ASK_TOOL) {
+        return {
+          behavior: "deny",
+          message:
+            "This is an unattended job; no user is available to answer. Proceed with reasonable defaults and your best judgment; do not call AskUserQuestion.",
+        };
+      }
+      return { behavior: "allow" };
+    },
     env: agentEnv(),
     systemPrompt: {
       type: "preset",

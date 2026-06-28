@@ -8,6 +8,7 @@ import type {
   AnyServerEvent,
   ClientCommand,
   PermissionMode,
+  QuestionAnswer,
 } from "./protocol";
 
 export type ConnState = "connecting" | "connected" | "reconnecting" | "closed";
@@ -152,6 +153,15 @@ class WsManager {
       decision,
       message,
     });
+  }
+
+  respondQuestion(
+    sessionId: string,
+    requestId: string,
+    answers: QuestionAnswer[],
+    cancelled?: boolean
+  ): void {
+    this.rawSend({ type: "question_response", sessionId, requestId, answers, cancelled });
   }
 
   interrupt(sessionId: string): void {

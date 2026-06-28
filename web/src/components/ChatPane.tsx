@@ -3,6 +3,7 @@ import { ws } from "../ws";
 import type { PermissionMode, SessionMeta } from "../protocol";
 import type { SessionStream } from "../hooks";
 import { Approval } from "./Approval";
+import { Question } from "./Question";
 import { MessageItem } from "./MessageItem";
 import { RichText } from "./RichText";
 
@@ -37,7 +38,7 @@ export function ChatPane({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [stream.transcript, stream.streamingText, stream.approvals]);
+  }, [stream.transcript, stream.streamingText, stream.approvals, stream.questions]);
 
   if (!session) {
     return (
@@ -101,6 +102,16 @@ export function ChatPane({
             approval={a}
             onRespond={(rid, decision, msg) =>
               ws.respondApproval(session.id, rid, decision, msg)
+            }
+          />
+        ))}
+
+        {stream.questions.map((q) => (
+          <Question
+            key={q.requestId}
+            pending={q}
+            onRespond={(rid, answers, cancelled) =>
+              ws.respondQuestion(session.id, rid, answers, cancelled)
             }
           />
         ))}

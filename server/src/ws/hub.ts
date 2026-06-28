@@ -64,6 +64,9 @@ export function attachWebSocket(server: Server): WebSocketServer {
           case "approval_response":
             sm.resolveApproval(cmd.sessionId, cmd.requestId, cmd.decision, cmd.message);
             break;
+          case "question_response":
+            sm.resolveQuestion(cmd.sessionId, cmd.requestId, cmd.answers, cmd.cancelled);
+            break;
           case "interrupt":
             void sm.interrupt(cmd.sessionId);
             break;

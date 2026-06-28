@@ -4,6 +4,7 @@ import { ws, type ConnState } from "./ws";
 import type {
   AnyServerEvent,
   PermissionMode,
+  QuestionItem,
   ResultContent,
   SessionStatus,
   TranscriptItem,
@@ -22,6 +23,12 @@ export interface PendingApproval {
   input: Record<string, unknown>;
 }
 
+export interface PendingQuestion {
+  requestId: string;
+  toolUseId: string;
+  questions: QuestionItem[];
+}
+
 export interface ActivityEntry {
   id: string;
   kind: "status" | "done";
@@ -36,6 +43,7 @@ export interface SessionStream {
   status: SessionStatus;
   permissionMode: PermissionMode | null;
   approvals: PendingApproval[];
+  questions: PendingQuestion[];
   activity: ActivityEntry[];
   lastResult: ResultContent | null;
   loading: boolean;
@@ -49,6 +57,7 @@ const EMPTY: SessionStream = {
   status: "idle",
   permissionMode: null,
   approvals: [],
+  questions: [],
   activity: [],
   lastResult: null,
   loading: false,
@@ -134,12 +143,24 @@ export function useSessionStream(sessionId: string | null): SessionStream {
             ],
           }));
           break;
+        case "question_request":
+          setState((p) => ({
+            ...p,
+            questions: [
+              ...p.questions,
+              {
+                requestId: ev.requestId,
+                toolUseId: ev.toolUseId,
+                questions: ev.questions,
+              },
+            ],
+          }));
+          break;
         case "approval_resolved":
           setState((p) => ({
             ...p,
-            approvals: p.approvals.filter(
-              (a) => a.requestId !== ev.requestId
-            ),
+            approvals: p.approvals.filter((a) => a.requestId !== ev.requestId),
+            questions: p.questions.filter((q) => q.requestId !== ev.requestId),
           }));
           break;
         case "status":

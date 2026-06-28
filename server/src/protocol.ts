@@ -83,6 +83,13 @@ export type ServerEvent =
       input: Record<string, unknown>;
     }
   | { type: "approval_resolved"; sessionId: string; requestId: string }
+  | {
+      type: "question_request";
+      sessionId: string;
+      requestId: string;
+      toolUseId: string;
+      questions: QuestionItem[];
+    }
   | { type: "status"; sessionId: string; status: SessionStatus; error?: string }
   | {
       type: "done";
@@ -108,10 +115,39 @@ export type ClientCommand =
       message?: string;
     }
   | { type: "interrupt"; sessionId: string }
-  | { type: "set_permission_mode"; sessionId: string; mode: PermissionMode };
+  | { type: "set_permission_mode"; sessionId: string; mode: PermissionMode }
+  | {
+      type: "question_response";
+      sessionId: string;
+      requestId: string;
+      answers: QuestionAnswer[];
+      cancelled?: boolean;
+    };
 
 export interface Settings {
   defaultSystemPrompt: string;
   defaultModel: string;
   defaultPermissionMode: PermissionMode;
+}
+
+// ---- AskUserQuestion tool ----
+export interface QuestionOption {
+  label: string;
+  description: string;
+  preview?: string;
+}
+
+export interface QuestionItem {
+  question: string;
+  header: string;
+  multiSelect: boolean;
+  options: QuestionOption[];
+}
+
+// The user's answer to one question: the labels they selected (one for
+// single-select, possibly many for multiSelect), or a freeform string.
+export interface QuestionAnswer {
+  question: string;
+  selected: string[];
+  freeform?: string;
 }

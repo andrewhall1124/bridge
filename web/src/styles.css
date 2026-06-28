@@ -641,6 +641,106 @@ select:focus {
   gap: 8px;
 }
 
+/* ---------- question (AskUserQuestion) ---------- */
+.question-card {
+  border: 1px solid var(--accent);
+  background: #0f1626;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.question-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.question-badge {
+  font-size: 11px;
+  background: var(--accent);
+  color: #06122b;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.question-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.question-chip {
+  align-self: flex-start;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  background: var(--bg-3);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.question-text {
+  margin: 0;
+  font-weight: 600;
+}
+.question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  cursor: pointer;
+  color: var(--text);
+}
+.option:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+}
+.option.active {
+  border-color: var(--accent);
+  background: #14233f;
+}
+.option:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.option-label {
+  font-weight: 600;
+}
+.option-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.option-preview {
+  margin: 6px 0 0;
+  padding: 8px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow: auto;
+}
+.question-other {
+  margin-top: 2px;
+}
+.question-hint {
+  font-size: 11px;
+}
+.question-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* ---------- activity ---------- */
 .activity-pane {
   padding: 12px;
