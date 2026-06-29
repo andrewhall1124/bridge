@@ -5,7 +5,7 @@ import type { SessionStream } from "../hooks";
 import { Approval } from "./Approval";
 import { Question } from "./Question";
 import { Transcript, pendingToolName } from "./Transcript";
-import { RichText } from "./RichText";
+import { Markdown } from "./Markdown";
 
 const MODE_OPTIONS: { value: PermissionMode; label: string }[] = [
   { value: "default", label: "default — ask before edits/commands" },
@@ -102,7 +102,7 @@ export function ChatPane({
         {stream.streaming && stream.streamingText && (
           <div className="msg-row assistant-row">
             <div className="bubble assistant streaming">
-              <RichText text={stream.streamingText} />
+              <Markdown text={stream.streamingText} />
               <span className="cursor">▋</span>
             </div>
           </div>

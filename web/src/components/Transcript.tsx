@@ -7,6 +7,7 @@ import type {
   TranscriptItem,
 } from "../protocol";
 import { RichText } from "./RichText";
+import { Markdown } from "./Markdown";
 
 // ---- node model ----------------------------------------------------------
 // We flatten the transcript into an ordered list of render nodes, pairing each
@@ -364,7 +365,7 @@ export function Transcript({ items }: { items: TranscriptItem[] }) {
             return (
               <div key={n.key} className="msg-row assistant-row">
                 <div className="bubble assistant">
-                  <RichText text={n.text} />
+                  <Markdown text={n.text} />
                 </div>
               </div>
             );
