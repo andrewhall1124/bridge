@@ -263,19 +263,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     return { session, transcript: dbm.getTranscript(session.id) };
   });
 
-  app.patch<{ Params: { id: string }; Body: { title?: string } }>(
-    "/api/sessions/:id",
-    async (req, reply) => {
-      const session = dbm.getSession(req.params.id);
-      if (!session) return reply.code(404).send({ error: "Session not found" });
-      const title = req.body?.title?.trim();
-      if (!title) return reply.code(400).send({ error: "title is required" });
-      dbm.setSessionTitle(session.id, title);
-      emitGlobal({ type: "sessions_changed" });
-      return { session: dbm.getSession(session.id) };
-    },
-  );
-
   app.delete<{ Params: { id: string } }>("/api/sessions/:id", async (req, reply) => {
     const session = dbm.getSession(req.params.id);
     if (!session) return reply.code(404).send({ error: "Session not found" });

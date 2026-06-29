@@ -257,10 +257,6 @@ export function setSessionStatus(id: string, status: SessionStatus): void {
   );
 }
 
-export function setSessionTitle(id: string, title: string): void {
-  db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`).run(title, id);
-}
-
 // Delete a session and its transcript.
 export function deleteSession(id: string): void {
   const tx = db.transaction((sessionId: string) => {

@@ -8,7 +8,6 @@ interface Props {
   onSelectRepo: (id: string) => void;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
-  onRenameSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onAddRepo: () => void;
   onRemoveRepo: (id: string) => void;
@@ -23,7 +22,6 @@ export function Sidebar({
   onSelectRepo,
   onSelectSession,
   onNewSession,
-  onRenameSession,
   onDeleteSession,
   onAddRepo,
   onRemoveRepo,
@@ -102,14 +100,6 @@ export function Sidebar({
                 <span className={`status-badge ${s.status}`}>{s.status}</span>
               </button>
               <div className="session-actions">
-                <button
-                  className="icon-btn icon-btn-sm"
-                  title="Rename session"
-                  aria-label="Rename session"
-                  onClick={() => onRenameSession(s.id)}
-                >
-                  ren
-                </button>
                 <button
                   className="icon-btn icon-btn-sm danger"
                   title="Delete session"

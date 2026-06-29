@@ -210,20 +210,6 @@ export function App() {
     if (selectedSessionId) ws.setPermissionMode(selectedSessionId, mode);
   }
 
-  async function renameSession(id: string) {
-    const current = sessions.find((s) => s.id === id);
-    const next = window.prompt("Rename session", current?.title ?? "");
-    if (next == null) return;
-    const title = next.trim();
-    if (!title || title === current?.title) return;
-    try {
-      await api.renameSession(id, title);
-      await loadSessions();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
   async function deleteSession(id: string) {
     const current = sessions.find((s) => s.id === id);
     if (
@@ -326,7 +312,6 @@ export function App() {
             onSelectRepo={selectRepo}
             onSelectSession={selectSession}
             onNewSession={newSession}
-            onRenameSession={renameSession}
             onDeleteSession={deleteSession}
             onAddRepo={() => setAddRepoOpen(true)}
             onRemoveRepo={removeRepo}
