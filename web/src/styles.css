@@ -135,7 +135,16 @@ select:focus {
 .app {
   display: flex;
   flex-direction: column;
-  height: var(--app-h, 100dvh);
+  /* Pin to the visible viewport. On iOS, `100dvh` stays full-height when the
+     on-screen keyboard opens, so the page scrolls and the chat input is shoved
+     off the bottom. `--app-height` is set from the VisualViewport API (see
+     App.tsx) so the shell shrinks to the area above the keyboard instead.
+     `position: fixed` removes the shell from flow so iOS has nothing to scroll. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--app-height, 100dvh);
 }
 
 .topbar {

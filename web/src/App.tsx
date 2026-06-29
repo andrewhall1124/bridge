@@ -71,6 +71,29 @@ export function App() {
   const wide = useMediaQuery("(min-width: 900px)");
   const stream = useSessionStream(selectedSessionId);
 
+  // Keep the app shell sized to the *visible* viewport. iOS leaves `dvh` at full
+  // height when the on-screen keyboard opens, which scrolls the chat input off
+  // the bottom of the screen. The VisualViewport reports the area not covered by
+  // the keyboard; mirror it into `--app-height` (consumed by `.app`).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const update = () => {
+      root.style.setProperty("--app-height", `${vv.height}px`);
+      // iOS may have scrolled the layout viewport to reveal the focused input;
+      // undo it so the pinned shell stays aligned with the visible area.
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
   const selectedRepo = repos.find((r) => r.id === selectedRepoId) ?? null;
   const selectedSession =
     sessions.find((s) => s.id === selectedSessionId) ?? null;
@@ -126,23 +149,6 @@ export function App() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  // Track the visual viewport so the app fits the area above the on-screen
-  // keyboard (iOS doesn't shrink 100dvh for the keyboard, which leaves a gap
-  // below the composer). Falls back to 100dvh via CSS when unavailable.
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const apply = () =>
-      document.documentElement.style.setProperty("--app-h", `${vv.height}px`);
-    apply();
-    vv.addEventListener("resize", apply);
-    vv.addEventListener("scroll", apply);
-    return () => {
-      vv.removeEventListener("resize", apply);
-      vv.removeEventListener("scroll", apply);
-    };
   }, []);
 
   function selectRepo(id: string) {
