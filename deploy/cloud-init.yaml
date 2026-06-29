@@ -43,7 +43,7 @@ write_files:
       PORT=8787
       BIND_ADDRESS=$TS_IP
       DB_PATH=./data/bridge.sqlite
-      DEFAULT_MODEL=sonnet
+      DEFAULT_MODEL=opus
       DEFAULT_PERMISSION_MODE=default
       REPOS_DIR=/srv/repos
       ENV
