@@ -40,20 +40,9 @@ export function ChatPane({
     if (el) el.scrollTop = el.scrollHeight;
   }, [stream.transcript, stream.streamingText, stream.approvals, stream.questions]);
 
-  if (!session) {
-    return (
-      <div className="pane empty-state">
-        <p>No session selected.</p>
-        <p className="subtle">Pick a repo and create a session to start.</p>
-      </div>
-    );
-  }
-
-  const running = stream.status === "running";
-  const mode: PermissionMode = stream.permissionMode ?? session.permissionMode;
-
   // Map each tool_use id to its tool name so tool_result blocks can be rendered
-  // contextually (e.g. an AskUserQuestion result is the user's answer, not an error).
+  // contextually (e.g. an AskUserQuestion result is the user's answer, not an
+  // error). Must run before any early return — hooks can't be conditional.
   const toolNameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const item of stream.transcript) {
@@ -65,6 +54,18 @@ export function ChatPane({
     }
     return m;
   }, [stream.transcript]);
+
+  if (!session) {
+    return (
+      <div className="pane empty-state">
+        <p>No session selected.</p>
+        <p className="subtle">Pick a repo and create a session to start.</p>
+      </div>
+    );
+  }
+
+  const running = stream.status === "running";
+  const mode: PermissionMode = stream.permissionMode ?? session.permissionMode;
 
   function send() {
     const t = text.trim();
