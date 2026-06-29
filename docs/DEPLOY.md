@@ -220,6 +220,16 @@ Watch progress in the Actions tab; confirm on the box with `journalctl -u bridge
 
 ## Notes & troubleshooting
 
+- **Harden: close public SSH once the box is on the tailnet.** `provision.sh` opens
+  inbound `tcp:22` so you can watch the first boot / recover if Tailscale fails to join.
+  After the box is healthy and reachable over the tailnet, drop that rule so SSH is
+  tailnet-only (CI connects via the tailnet IP, so deploys keep working):
+  ```bash
+  hcloud firewall delete-rule bridge-fw --direction in --protocol tcp --port 22 \
+    --source-ips 0.0.0.0/0 --source-ips ::/0
+  ```
+  Tailnet SSH rides on Tailscale's WireGuard (UDP 41641, still allowed), so it's
+  unaffected. Verify first that `ssh <user>@<tailnet-ip>` works from a tailnet device.
 - **Billing:** never set `ANTHROPIC_API_KEY` if you want subscription billing. The app
   deletes it from the agent env when no key is configured.
 - **`claude login` expiry:** credentials live in the `bridge` user's home and persist

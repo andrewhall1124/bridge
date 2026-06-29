@@ -81,3 +81,5 @@ echo "    Watch it:   ssh root@\$(hcloud server ip $SERVER_NAME) tail -f /var/lo
 echo "    Then, over Tailscale:"
 echo "      ssh bridge@bridge.<your-tailnet>.ts.net"
 echo "      claude login && sudo systemctl restart bridge"
+echo "    Once healthy, harden by closing public SSH (see docs/DEPLOY.md):"
+echo "      hcloud firewall delete-rule $FIREWALL_NAME --direction in --protocol tcp --port 22 --source-ips 0.0.0.0/0 --source-ips ::/0"
