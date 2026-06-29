@@ -1,10 +1,19 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { resolve, join, basename, isAbsolute } from "node:path";
+import { resolve, join, basename, isAbsolute, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { log } from "./logger.js";
 import type { PermissionMode, Repo } from "./protocol.js";
 
+// The server is launched from the server/ workspace dir (tsx), so the cwd is
+// not the repo root. Resolve the repo root from this module's location so
+// .env / config.json are found no matter where the process is started.
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+// Load .env from the cwd (if any) and from the repo root. dotenv does not
+// override already-set vars, so real environment variables still win.
 dotenv.config();
+dotenv.config({ path: join(REPO_ROOT, ".env") });
 
 export interface McpServerEntry {
   command: string;
@@ -60,9 +69,13 @@ function asPermissionMode(value: string | undefined, fallback: PermissionMode): 
 }
 
 function loadFileConfig(): FileConfig {
-  const path = resolve(process.env.CONFIG_PATH ?? "config.json");
-  if (!existsSync(path)) {
-    log.info(`No config.json found at ${path}; using env vars / defaults.`);
+  // CONFIG_PATH wins; otherwise prefer cwd/config.json, then repo-root.
+  const candidates = process.env.CONFIG_PATH
+    ? [resolve(process.env.CONFIG_PATH)]
+    : [resolve("config.json"), join(REPO_ROOT, "config.json")];
+  const path = candidates.find((p) => existsSync(p));
+  if (!path) {
+    log.info(`No config.json found (looked in ${candidates.join(", ")}); using env vars / defaults.`);
     return {};
   }
   try {
