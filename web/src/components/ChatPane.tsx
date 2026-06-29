@@ -41,6 +41,7 @@ export function ChatPane({
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -133,6 +134,12 @@ export function ChatPane({
   function onDragLeave() {
     dragDepth.current = Math.max(0, dragDepth.current - 1);
     if (dragDepth.current === 0) setDragOver(false);
+  }
+
+  function onFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) void upload(files);
+    e.target.value = ""; // allow re-picking the same file
   }
 
   return (
@@ -262,6 +269,22 @@ export function ChatPane({
           </div>
         )}
         <div className="chat-input-row">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            hidden
+            onChange={onFilePick}
+          />
+          <button
+            className="btn attach-btn"
+            title="Attach files"
+            aria-label="Attach files"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            📎
+          </button>
           <textarea
             value={text}
             placeholder="Message Claude… (Enter to send, Shift+Enter for newline · drag/paste files to attach)"

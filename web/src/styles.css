@@ -2031,3 +2031,12 @@ body::after {
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
+
+/* paperclip attach button in the chat input row */
+.attach-btn {
+  flex: 0 0 auto;
+  align-self: stretch;
+  padding: 0 12px;
+  font-size: 16px;
+  line-height: 1;
+}
