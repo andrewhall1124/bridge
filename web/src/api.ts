@@ -6,6 +6,9 @@ import type {
   FileContent,
   FileListing,
   NotGitResult,
+  RailwayConfig,
+  RailwayProject,
+  RailwayStatus,
   ReferencesResult,
   Repo,
   SessionMeta,
@@ -129,4 +132,15 @@ export const api = {
         body: JSON.stringify(opts),
       }
     ),
+
+  getRailwayConfig: () => request<RailwayConfig>("/api/railway/config"),
+  getRailwayProjects: () =>
+    request<{ projects: RailwayProject[] }>("/api/railway/projects"),
+  getRailwayStatus: (project?: string, env?: string) => {
+    const qs = new URLSearchParams();
+    if (project) qs.set("project", project);
+    if (env) qs.set("env", env);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<RailwayStatus>(`/api/railway/status${suffix}`);
+  },
 };

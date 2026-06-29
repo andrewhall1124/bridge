@@ -160,6 +160,48 @@ export interface ReferencesResult {
   notGit?: boolean;
 }
 
+// ---- Railway / Deploy page ----
+export interface RailwayConfig {
+  configured: boolean;
+  projectId: string | null;
+  environment: string;
+}
+
+export interface RailwayProject {
+  id: string;
+  name: string;
+}
+
+export interface RailwayEnvironment {
+  id: string;
+  name: string;
+}
+
+export interface RailwayDeployment {
+  id: string;
+  status: string;
+  createdAt: string | null;
+  url: string | null;
+  staticUrl: string | null;
+  commitMessage: string | null;
+  commitHash: string | null;
+  commitAuthor: string | null;
+}
+
+export interface RailwayService {
+  id: string;
+  name: string;
+  latest: RailwayDeployment | null;
+}
+
+export interface RailwayStatus {
+  projectId: string;
+  projectName: string;
+  environment: RailwayEnvironment;
+  environments: RailwayEnvironment[];
+  services: RailwayService[];
+}
+
 // ---- WebSocket server -> client events ----
 export type ServerEvent =
   | { type: "hello"; sessionId: string; status: SessionStatus; mode: PermissionMode }

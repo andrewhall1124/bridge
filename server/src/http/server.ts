@@ -8,6 +8,8 @@ import * as dbm from "../db.js";
 import { emitGlobal } from "../bus.js";
 import { closeSession } from "../agent/sessionManager.js";
 import * as git from "../git/repo.js";
+import * as railway from "../railway/client.js";
+import { getConfig } from "../config.js";
 import type { PermissionMode, Repo, Settings } from "../protocol.js";
 
 function slugify(name: string): string {
@@ -288,6 +290,51 @@ export async function buildServer(): Promise<FastifyInstance> {
         return { ok: true };
       } catch (err) {
         return reply.code(400).send({ error: errMsg(err) });
+      }
+    },
+  );
+
+  // ---- Railway (Deploy page) ---------------------------------------------
+  // Whether Railway is configured + safe defaults (never returns the token).
+  app.get("/api/railway/config", async () => {
+    const cfg = getConfig();
+    return {
+      configured: Boolean(cfg.railwayApiToken),
+      projectId: cfg.railwayProjectId,
+      environment: cfg.railwayEnvironment,
+    };
+  });
+
+  app.get("/api/railway/projects", async (_req, reply) => {
+    const cfg = getConfig();
+    if (!cfg.railwayApiToken)
+      return reply.code(400).send({ error: "Railway is not configured" });
+    try {
+      return { projects: await railway.listProjects(cfg.railwayApiToken) };
+    } catch (err) {
+      return reply.code(502).send({ error: errMsg(err) });
+    }
+  });
+
+  app.get<{ Querystring: { project?: string; env?: string } }>(
+    "/api/railway/status",
+    async (req, reply) => {
+      const cfg = getConfig();
+      if (!cfg.railwayApiToken)
+        return reply.code(400).send({ error: "Railway is not configured" });
+      const projectId = req.query.project ?? cfg.railwayProjectId;
+      if (!projectId)
+        return reply
+          .code(400)
+          .send({ error: "No project specified (set railwayProjectId or pass ?project=)" });
+      try {
+        return await railway.getProjectStatus(
+          cfg.railwayApiToken,
+          projectId,
+          req.query.env ?? cfg.railwayEnvironment,
+        );
+      } catch (err) {
+        return reply.code(502).send({ error: errMsg(err) });
       }
     },
   );

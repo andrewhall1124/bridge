@@ -24,6 +24,12 @@ export interface AppConfig {
   defaultPermissionMode: PermissionMode;
   repos: Repo[];
   mcpServers: Record<string, McpServerEntry>;
+  /** Railway API token (account or project scope) for the Deploy page. Null disables it. */
+  railwayApiToken: string | null;
+  /** Default Railway project id shown on the Deploy page (optional). */
+  railwayProjectId: string | null;
+  /** Default Railway environment name to show (e.g. "production"). */
+  railwayEnvironment: string;
 }
 
 interface FileConfig {
@@ -36,6 +42,9 @@ interface FileConfig {
   repos?: Repo[];
   reposDir?: string;
   mcpServers?: Record<string, McpServerEntry>;
+  railwayApiToken?: string | null;
+  railwayProjectId?: string | null;
+  railwayEnvironment?: string;
 }
 
 const DEFAULT_PERMISSION_MODES: PermissionMode[] = [
@@ -160,6 +169,12 @@ export function getConfig(): AppConfig {
     ),
     repos: resolveRepos(file),
     mcpServers: file.mcpServers ?? {},
+    railwayApiToken:
+      process.env.RAILWAY_API_TOKEN ?? file.railwayApiToken ?? null,
+    railwayProjectId:
+      process.env.RAILWAY_PROJECT_ID ?? file.railwayProjectId ?? null,
+    railwayEnvironment:
+      process.env.RAILWAY_ENVIRONMENT ?? file.railwayEnvironment ?? "production",
   };
 
   if (cached.anthropicApiKey) {

@@ -241,6 +241,11 @@ in the Settings tab (stored in SQLite, seeded from config on first boot).
   file viewer with line numbers, hover-to-highlight a symbol's occurrences, and
   click-a-symbol to **find usages** repo-wide (whole-word `git grep`) with clickable
   jump-to-line results. A separate Diff tab shows uncommitted changes with commit/discard.
+- **Deploy page:** when a Railway API token is configured (`RAILWAY_API_TOKEN`), the Deploy
+  tab shows, for a project/environment, every service with its latest deployment's status
+  (color-coded), commit subject/SHA, and time — auto-refreshing every 10s. Read-only; the
+  token stays server-side and is never sent to the browser. Set `RAILWAY_PROJECT_ID` for a
+  default project (or pick one in the UI) and `RAILWAY_ENVIRONMENT` (default `production`).
 - **Path safety:** all repo file/diff/commit/discard/usages operations are scoped to the
   repo root and reject any path that escapes it.
 

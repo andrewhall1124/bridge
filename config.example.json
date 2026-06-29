@@ -17,5 +17,8 @@
       "command": "npx",
       "args": ["@playwright/mcp@latest"]
     }
-  }
+  },
+  "railwayApiToken": null,
+  "railwayProjectId": null,
+  "railwayEnvironment": "production"
 }

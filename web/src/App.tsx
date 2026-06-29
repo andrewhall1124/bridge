@@ -7,13 +7,15 @@ import { Sidebar } from "./components/Sidebar";
 import { AddRepoModal } from "./components/AddRepoModal";
 import { ChatPane } from "./components/ChatPane";
 import { CodePane } from "./components/CodePane";
+import { DeployPane } from "./components/DeployPane";
 import { Settings } from "./components/Settings";
 
-type Tab = "chat" | "code" | "settings";
+type Tab = "chat" | "code" | "deploy" | "settings";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "chat", label: "Chat", icon: "💬" },
   { id: "code", label: "Code", icon: "📁" },
+  { id: "deploy", label: "Deploy", icon: "🚀" },
   { id: "settings", label: "Settings", icon: "⚙️" },
 ];
 
@@ -32,7 +34,7 @@ function useMediaQuery(query: string): boolean {
 }
 
 // ---- URL persistence: /<tab>/<repoId>/<sessionId> ----
-const TAB_IDS = ["chat", "code", "settings"] as const;
+const TAB_IDS = ["chat", "code", "deploy", "settings"] as const;
 
 function parsePath(): { tab: Tab; repoId: string | null; sessionId: string | null } {
   const segs = window.location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -250,6 +252,8 @@ export function App() {
         );
       case "code":
         return <CodePane repoId={selectedRepoId} />;
+      case "deploy":
+        return <DeployPane />;
       case "settings":
         return <Settings repos={repos} />;
       default:
