@@ -4,13 +4,14 @@
 // - Network-first for navigations, falling back to cached index.html offline.
 // - NEVER touch /api or /ws requests (the app is online-only for data).
 
-const CACHE = "bridge-shell-v1";
+const CACHE = "bridge-shell-v2";
 
 const PRECACHE = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
   "/favicon.svg",
+  "/apple-touch-icon.png",
   "/icons/icon-192.svg",
   "/icons/icon-512.svg",
 ];
