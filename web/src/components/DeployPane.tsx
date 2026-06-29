@@ -288,7 +288,20 @@ RAILWAY_ENVIRONMENT=production`}</pre>
               ? `https://${d.staticUrl.replace(/^https?:\/\//, "")}`
               : d?.url ?? null;
             return (
-              <div className="dep-row" key={s.id}>
+              <div
+                className="dep-row clickable"
+                key={s.id}
+                role="button"
+                tabIndex={0}
+                title="Edit environment variables"
+                onClick={() => setVarsFor({ id: s.id, name: s.name })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setVarsFor({ id: s.id, name: s.name });
+                  }
+                }}
+              >
                 <span className="dep-svc" title={s.name}>
                   {s.name}
                 </span>
@@ -319,24 +332,19 @@ RAILWAY_ENVIRONMENT=production`}</pre>
                   {relTime(d?.createdAt ?? null)}
                 </span>
                 <span className="dep-actions-col">
-                  <button
-                    className="btn btn-xs"
-                    title="Environment variables"
-                    onClick={() => setVarsFor({ id: s.id, name: s.name })}
-                  >
-                    vars
-                  </button>
                   {link && (
                     <a
                       className="dep-link"
                       href={link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      title="Open"
+                      title="Open deployment"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       ↗
                     </a>
                   )}
+                  <span className="dep-vars">Env vars ›</span>
                 </span>
               </div>
             );

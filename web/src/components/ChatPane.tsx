@@ -227,6 +227,20 @@ export function ChatPane({
           hidden
           onChange={onFilePick}
         />
+        <div className="mode-seg mode-seg-top" role="group" aria-label="Permission mode">
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              className={`mode-chip mode-${m.value} ${mode === m.value ? "active" : ""}`}
+              title={m.title}
+              aria-pressed={mode === m.value}
+              onClick={() => onSetMode(m.value)}
+            >
+              {m.abbr}
+            </button>
+          ))}
+        </div>
         <div className="composer">
           {(attachments.length > 0 || uploading || uploadError) && (
             <div className="chat-attachments">
@@ -261,20 +275,6 @@ export function ChatPane({
             rows={1}
           />
           <div className="composer-bar">
-            <div className="mode-seg" role="group" aria-label="Permission mode">
-              {MODES.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  className={`mode-chip mode-${m.value} ${mode === m.value ? "active" : ""}`}
-                  title={m.title}
-                  aria-pressed={mode === m.value}
-                  onClick={() => onSetMode(m.value)}
-                >
-                  {m.abbr}
-                </button>
-              ))}
-            </div>
             <span className="spacer" />
             <button
               className="composer-btn attach"

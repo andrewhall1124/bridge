@@ -128,6 +128,23 @@ export function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  // Track the visual viewport so the app fits the area above the on-screen
+  // keyboard (iOS doesn't shrink 100dvh for the keyboard, which leaves a gap
+  // below the composer). Falls back to 100dvh via CSS when unavailable.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const apply = () =>
+      document.documentElement.style.setProperty("--app-h", `${vv.height}px`);
+    apply();
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+    };
+  }, []);
+
   function selectRepo(id: string) {
     setSelectedRepoId(id);
     setSelectedSessionId(null);

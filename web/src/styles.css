@@ -135,7 +135,7 @@ select:focus {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
 }
 
 .topbar {
@@ -682,6 +682,19 @@ select:focus {
     calc(10px + var(--safe-left));
   background: var(--bg-1);
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Mode selector sits as its own full-width row above the composer. */
+.mode-seg-top {
+  display: flex;
+  width: 100%;
+}
+.mode-seg-top .mode-chip {
+  flex: 1 1 0;
+  text-align: center;
 }
 
 /* Unified composer: text on top, a slim control bar beneath (mode left,
@@ -1956,6 +1969,18 @@ body::after {
   color: var(--accent);
   text-decoration: none;
   font-size: 14px;
+}
+.dep-row.clickable {
+  cursor: pointer;
+}
+.dep-row.clickable:hover {
+  background: var(--bg-2);
+}
+.dep-vars {
+  color: var(--accent);
+  font-size: 12px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .dep-badge {
   display: inline-block;
