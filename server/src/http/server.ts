@@ -116,19 +116,31 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  // Rename a repo's display name.
-  app.patch<{ Params: { id: string }; Body: { name?: string } }>(
-    "/api/repos/:id",
-    async (req, reply) => {
-      const repo = dbm.getRepo(req.params.id);
-      if (!repo) return reply.code(404).send({ error: "Unknown repo" });
-      const name = req.body?.name?.trim();
-      if (!name) return reply.code(400).send({ error: "name is required" });
+  // Update a repo: rename and/or set its linked Railway project.
+  app.patch<{
+    Params: { id: string };
+    Body: { name?: string; railwayProjectId?: string | null };
+  }>("/api/repos/:id", async (req, reply) => {
+    const repo = dbm.getRepo(req.params.id);
+    if (!repo) return reply.code(404).send({ error: "Unknown repo" });
+    const body = req.body ?? {};
+    let touched = false;
+    if (typeof body.name === "string") {
+      const name = body.name.trim();
+      if (!name) return reply.code(400).send({ error: "name cannot be empty" });
       dbm.renameRepo(repo.id, name);
-      emitGlobal({ type: "repos_changed" });
-      return { repo: dbm.getRepo(repo.id) };
-    },
-  );
+      touched = true;
+    }
+    if (body.railwayProjectId !== undefined) {
+      const pid = body.railwayProjectId?.trim() || null;
+      dbm.setRepoRailway(repo.id, pid);
+      touched = true;
+    }
+    if (!touched)
+      return reply.code(400).send({ error: "Nothing to update" });
+    emitGlobal({ type: "repos_changed" });
+    return { repo: dbm.getRepo(repo.id) };
+  });
 
   // Unregister a repo (files on disk are left untouched).
   app.delete<{ Params: { id: string } }>("/api/repos/:id", async (req, reply) => {
@@ -300,7 +312,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     const cfg = getConfig();
     return {
       configured: Boolean(cfg.railwayApiToken),
-      projectId: cfg.railwayProjectId,
       environment: cfg.railwayEnvironment,
     };
   });
@@ -322,11 +333,11 @@ export async function buildServer(): Promise<FastifyInstance> {
       const cfg = getConfig();
       if (!cfg.railwayApiToken)
         return reply.code(400).send({ error: "Railway is not configured" });
-      const projectId = req.query.project ?? cfg.railwayProjectId;
+      const projectId = req.query.project;
       if (!projectId)
         return reply
           .code(400)
-          .send({ error: "No project specified (set railwayProjectId or pass ?project=)" });
+          .send({ error: "No project specified (link the repo to a Railway project)" });
       try {
         return await railway.getProjectStatus(
           cfg.railwayApiToken,

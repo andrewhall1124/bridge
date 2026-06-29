@@ -25,7 +25,8 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS repos (
   id   TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  path TEXT NOT NULL
+  path TEXT NOT NULL,
+  railway_project_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -64,37 +65,63 @@ CREATE TABLE IF NOT EXISTS settings (
   }
 }
 
+// Migration: per-repo Railway project mapping (Deploy page).
+{
+  const cols = db.prepare(`PRAGMA table_info(repos)`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === "railway_project_id")) {
+    db.exec(`ALTER TABLE repos ADD COLUMN railway_project_id TEXT`);
+  }
+}
+
 const now = () => new Date().toISOString();
 
 // ---- Repos ---------------------------------------------------------------
 // Repos are config-driven; we mirror them into the table so the rest of the
 // app can join against persisted ids, refreshing on every boot.
 export function syncRepos(repos: Repo[]): void {
+  // COALESCE preserves a UI-set Railway mapping when config omits it.
   const upsert = db.prepare(
-    `INSERT INTO repos (id, name, path) VALUES (@id, @name, @path)
-     ON CONFLICT(id) DO UPDATE SET name = excluded.name, path = excluded.path`,
+    `INSERT INTO repos (id, name, path, railway_project_id)
+     VALUES (@id, @name, @path, @railwayProjectId)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       path = excluded.path,
+       railway_project_id = COALESCE(excluded.railway_project_id, repos.railway_project_id)`,
   );
   const tx = db.transaction((rows: Repo[]) => {
-    for (const r of rows) upsert.run(r);
+    for (const r of rows)
+      upsert.run({ ...r, railwayProjectId: r.railwayProjectId ?? null });
   });
   tx(repos);
 }
 
 export function listRepos(): Repo[] {
-  return db.prepare(`SELECT id, name, path FROM repos ORDER BY name`).all() as Repo[];
+  return db
+    .prepare(
+      `SELECT id, name, path, railway_project_id AS railwayProjectId
+       FROM repos ORDER BY name`,
+    )
+    .all() as Repo[];
 }
 
 export function getRepo(id: string): Repo | undefined {
-  return db.prepare(`SELECT id, name, path FROM repos WHERE id = ?`).get(id) as
-    | Repo
-    | undefined;
+  return db
+    .prepare(
+      `SELECT id, name, path, railway_project_id AS railwayProjectId
+       FROM repos WHERE id = ?`,
+    )
+    .get(id) as Repo | undefined;
 }
 
 export function addRepo(repo: Repo): void {
   db.prepare(
-    `INSERT INTO repos (id, name, path) VALUES (@id, @name, @path)
-     ON CONFLICT(id) DO UPDATE SET name = excluded.name, path = excluded.path`,
-  ).run(repo);
+    `INSERT INTO repos (id, name, path, railway_project_id)
+     VALUES (@id, @name, @path, @railwayProjectId)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       path = excluded.path,
+       railway_project_id = COALESCE(excluded.railway_project_id, repos.railway_project_id)`,
+  ).run({ ...repo, railwayProjectId: repo.railwayProjectId ?? null });
 }
 
 // Unregister a repo from the picker. Files on disk are left untouched. Sessions
@@ -108,6 +135,14 @@ export function deleteRepo(id: string): void {
 // name on next boot via syncRepos.
 export function renameRepo(id: string, name: string): void {
   db.prepare(`UPDATE repos SET name = ? WHERE id = ?`).run(name, id);
+}
+
+// Link (or unlink, with null) a repo to a Railway project for the Deploy page.
+export function setRepoRailway(id: string, railwayProjectId: string | null): void {
+  db.prepare(`UPDATE repos SET railway_project_id = ? WHERE id = ?`).run(
+    railwayProjectId,
+    id,
+  );
 }
 
 // ---- Settings ------------------------------------------------------------

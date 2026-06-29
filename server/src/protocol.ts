@@ -8,6 +8,8 @@ export interface Repo {
   id: string;
   name: string;
   path: string;
+  /** Linked Railway project id for the Deploy page (optional). */
+  railwayProjectId?: string | null;
 }
 
 export type SessionStatus = "idle" | "running" | "error";

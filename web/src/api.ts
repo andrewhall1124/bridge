@@ -68,6 +68,11 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ name }),
     }),
+  setRepoRailway: (id: string, railwayProjectId: string | null) =>
+    request<{ repo: Repo }>(`/api/repos/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ railwayProjectId }),
+    }),
   deleteRepo: (id: string) =>
     request<{ ok: true }>(`/api/repos/${encodeURIComponent(id)}`, {
       method: "DELETE",

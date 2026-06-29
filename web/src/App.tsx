@@ -253,7 +253,13 @@ export function App() {
       case "code":
         return <CodePane repoId={selectedRepoId} />;
       case "deploy":
-        return <DeployPane />;
+        return (
+          <DeployPane
+            repoId={selectedRepoId}
+            repos={repos}
+            onReposChanged={loadRepos}
+          />
+        );
       case "settings":
         return <Settings repos={repos} />;
       default:

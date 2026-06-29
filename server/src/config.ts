@@ -24,10 +24,9 @@ export interface AppConfig {
   defaultPermissionMode: PermissionMode;
   repos: Repo[];
   mcpServers: Record<string, McpServerEntry>;
-  /** Railway API token (account or project scope) for the Deploy page. Null disables it. */
+  /** Railway API token (account scope) for the Deploy page. Null disables it.
+   *  Each repo is linked to a specific Railway project in the UI. */
   railwayApiToken: string | null;
-  /** Default Railway project id shown on the Deploy page (optional). */
-  railwayProjectId: string | null;
   /** Default Railway environment name to show (e.g. "production"). */
   railwayEnvironment: string;
 }
@@ -43,7 +42,6 @@ interface FileConfig {
   reposDir?: string;
   mcpServers?: Record<string, McpServerEntry>;
   railwayApiToken?: string | null;
-  railwayProjectId?: string | null;
   railwayEnvironment?: string;
 }
 
@@ -140,7 +138,12 @@ function resolveRepos(file: FileConfig): Repo[] {
     if (!existsSync(abs)) {
       log.warn(`Repo "${repo.id}" path does not exist: ${abs}`);
     }
-    valid.push({ id: repo.id, name: repo.name || repo.id || basename(abs), path: abs });
+    valid.push({
+      id: repo.id,
+      name: repo.name || repo.id || basename(abs),
+      path: abs,
+      railwayProjectId: repo.railwayProjectId ?? null,
+    });
   }
   return valid;
 }
@@ -171,8 +174,6 @@ export function getConfig(): AppConfig {
     mcpServers: file.mcpServers ?? {},
     railwayApiToken:
       process.env.RAILWAY_API_TOKEN ?? file.railwayApiToken ?? null,
-    railwayProjectId:
-      process.env.RAILWAY_PROJECT_ID ?? file.railwayProjectId ?? null,
     railwayEnvironment:
       process.env.RAILWAY_ENVIRONMENT ?? file.railwayEnvironment ?? "production",
   };

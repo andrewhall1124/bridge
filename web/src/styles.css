@@ -1947,3 +1947,27 @@ body::after {
   white-space: pre;
   overflow-x: auto;
 }
+
+/* Deploy: link-a-project + project label */
+.deploy-link {
+  padding: 24px;
+  max-width: 560px;
+}
+.deploy-link h3 {
+  margin: 0 0 8px;
+}
+.deploy-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.deploy-link-row select {
+  max-width: 280px;
+}
+.deploy-proj {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
