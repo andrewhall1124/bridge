@@ -57,6 +57,33 @@ function ToolResultBlockView({ block }: { block: ToolResultBlock }) {
   );
 }
 
+// An AskUserQuestion answer arrives as an (is_error) tool_result because it's
+// delivered through the permission callback. Render it as the user's answer,
+// not a tool error.
+function answerText(raw: string): string {
+  const lines = raw.split("\n");
+  while (lines.length && /^the user answered your question/i.test(lines[0]!.trim())) {
+    lines.shift();
+  }
+  while (
+    lines.length &&
+    /^use these answers and continue/i.test(lines[lines.length - 1]!.trim())
+  ) {
+    lines.pop();
+  }
+  const cleaned = lines.join("\n").trim();
+  return cleaned || raw.trim();
+}
+
+function AnswerBlockView({ block }: { block: ToolResultBlock }) {
+  return (
+    <div className="answer-result">
+      <span className="answer-badge">↩ your answer</span>
+      <RichText text={answerText(toolResultText(block.content))} />
+    </div>
+  );
+}
+
 function AssistantView({ blocks }: { blocks: AssistantBlock[] }) {
   return (
     <div className="bubble assistant">
@@ -77,7 +104,13 @@ function AssistantView({ blocks }: { blocks: AssistantBlock[] }) {
   );
 }
 
-export function MessageItem({ item }: { item: TranscriptItem }) {
+export function MessageItem({
+  item,
+  resolveToolName,
+}: {
+  item: TranscriptItem;
+  resolveToolName?: (toolUseId: string) => string | undefined;
+}) {
   switch (item.type) {
     case "user_text": {
       const c = item.content as UserTextContent;
@@ -101,9 +134,13 @@ export function MessageItem({ item }: { item: TranscriptItem }) {
       const blocks = (item.content as ToolResultBlock[]) ?? [];
       return (
         <div className="msg-row tool-row">
-          {blocks.map((b, i) => (
-            <ToolResultBlockView key={i} block={b} />
-          ))}
+          {blocks.map((b, i) =>
+            resolveToolName?.(b.tool_use_id) === "AskUserQuestion" ? (
+              <AnswerBlockView key={i} block={b} />
+            ) : (
+              <ToolResultBlockView key={i} block={b} />
+            ),
+          )}
         </div>
       );
     }

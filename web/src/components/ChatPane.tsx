@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ws } from "../ws";
-import type { PermissionMode, SessionMeta } from "../protocol";
+import type { AssistantBlock, PermissionMode, SessionMeta } from "../protocol";
 import type { SessionStream } from "../hooks";
 import { Approval } from "./Approval";
 import { Question } from "./Question";
@@ -52,6 +52,20 @@ export function ChatPane({
   const running = stream.status === "running";
   const mode: PermissionMode = stream.permissionMode ?? session.permissionMode;
 
+  // Map each tool_use id to its tool name so tool_result blocks can be rendered
+  // contextually (e.g. an AskUserQuestion result is the user's answer, not an error).
+  const toolNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const item of stream.transcript) {
+      if (item.type === "assistant" && Array.isArray(item.content)) {
+        for (const b of item.content as AssistantBlock[]) {
+          if (b.type === "tool_use") m.set(b.id, b.name);
+        }
+      }
+    }
+    return m;
+  }, [stream.transcript]);
+
   function send() {
     const t = text.trim();
     if (!t || !session) return;
@@ -84,7 +98,11 @@ export function ChatPane({
           </div>
         )}
         {stream.transcript.map((item) => (
-          <MessageItem key={item.id} item={item} />
+          <MessageItem
+            key={item.id}
+            item={item}
+            resolveToolName={(id) => toolNameById.get(id)}
+          />
         ))}
 
         {stream.streaming && stream.streamingText && (
