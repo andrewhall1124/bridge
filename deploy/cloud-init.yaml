@@ -31,6 +31,14 @@ write_files:
       tailscale up --authkey='__TS_AUTHKEY__' --hostname=bridge
       TS_IP="$(tailscale ip -4 | head -1)"
 
+      # --- HTTPS via Tailscale ---
+      # Tailscale terminates TLS on :443 (tailnet-only) with an auto-provisioned
+      # Let's Encrypt cert for the MagicDNS name, reverse-proxying to the app on
+      # loopback. Requires HTTPS certificates enabled for the tailnet in the admin
+      # console (Settings → Keys/DNS → "HTTPS Certificates"). The serve config is
+      # stored in tailscaled state and survives reboots/redeploys.
+      tailscale serve --bg --https=443 http://127.0.0.1:8787
+
       # --- Service user (home separate from the repo so ~/.claude creds persist) ---
       useradd --create-home --shell /bin/bash bridge
       mkdir -p "$APP_DIR" /srv/repos
@@ -45,10 +53,10 @@ write_files:
       CLAUDE_BIN="$(find "$APP_DIR/node_modules/@anthropic-ai" -maxdepth 2 -name claude -type f | head -1)"
       [ -n "$CLAUDE_BIN" ] && ln -sf "$CLAUDE_BIN" /usr/local/bin/claude
 
-      # --- .env: bind ONLY to the tailnet IP ---
+      # --- .env: bind to loopback; Tailscale serve fronts it with TLS on :443 ---
       cat > "$APP_DIR/.env" <<ENV
       PORT=8787
-      BIND_ADDRESS=$TS_IP
+      BIND_ADDRESS=127.0.0.1
       DB_PATH=./data/bridge.sqlite
       DEFAULT_MODEL=opus
       DEFAULT_PERMISSION_MODE=default
@@ -83,6 +91,7 @@ write_files:
 
       echo "=================================================================="
       echo " Bridge bootstrap complete. Tailnet IP: $TS_IP"
+      echo " App URL (HTTPS, tailnet-only): see 'tailscale serve status'"
       echo " Remaining manual step (subscription billing):"
       echo "   ssh bridge@$TS_IP   # over Tailscale"
       echo "   claude login"

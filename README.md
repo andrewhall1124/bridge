@@ -133,9 +133,10 @@ are kept). Config-defined repos are re-synced on every boot.
 
 ### 3. Bind to Tailscale only
 
-Set `bindAddress` to the VPS's **tailnet IP** (`100.x.y.z`) or its MagicDNS hostname —
-**never** `0.0.0.0` on a public interface. The tailnet is the entire security boundary;
-there is no app-level login or TLS.
+Set `bindAddress` to `127.0.0.1` (loopback) and put **Tailscale serve** in front for
+HTTPS (recommended — see below), or bind directly to the VPS's **tailnet IP**
+(`100.x.y.z`) / MagicDNS hostname for plain HTTP. **Never** bind `0.0.0.0` on a public
+interface. The tailnet is the entire security boundary; there is no app-level login.
 
 Also firewall the port on all public interfaces, e.g. with `ufw`:
 
@@ -145,6 +146,19 @@ sudo ufw allow in on tailscale0 to any port <PORT>   # allow only over the tailn
 ```
 
 The server prints a warning if it is bound to `0.0.0.0`.
+
+**HTTPS (recommended).** Tailscale can terminate TLS for you on `:443` (tailnet-only)
+with an auto-provisioned cert for your MagicDNS name, proxying to the app on loopback —
+so the PWA loads over `https://` with no port and no cert warnings. Enable **HTTPS
+Certificates** for your tailnet in the admin console, bind the app to `127.0.0.1`, then:
+
+```bash
+tailscale serve --bg --https=443 http://127.0.0.1:8787
+```
+
+If `https://<MagicDNS-name>` returns **502**, the app isn't reachable on the proxy
+target — make sure `bindAddress`/`BIND_ADDRESS` is `127.0.0.1` (not the tailnet IP) so
+the loopback proxy target is actually listening.
 
 ---
 
@@ -156,10 +170,12 @@ The server prints a warning if it is bound to `0.0.0.0`.
 npm start          # builds the web client, then starts the server
 ```
 
-Then open the app from your phone/laptop at the VPS's MagicDNS hostname:
+Then open the app from your phone/laptop at the VPS's MagicDNS hostname — over HTTPS if
+you set up Tailscale serve (recommended), or plain HTTP on the port otherwise:
 
 ```
-http://bridge.<your-tailnet>.ts.net:8787
+https://bridge.<your-tailnet>.ts.net          # with `tailscale serve` (TLS on :443)
+http://bridge.<your-tailnet>.ts.net:8787      # plain HTTP (app bound to the tailnet IP)
 ```
 
 On first visit, use your browser's "Add to Home Screen" to install the PWA.

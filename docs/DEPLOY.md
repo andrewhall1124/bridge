@@ -15,7 +15,7 @@ nothing exposed to the public internet.
 | Piece | Role |
 |-------|------|
 | Hetzner Cloud VPS (Ubuntu) | runs the Node server under `systemd` |
-| Tailscale on the VPS | the entire security boundary; the app binds to the tailnet IP |
+| Tailscale on the VPS | the entire security boundary; terminates TLS on `:443` and proxies to the app on loopback |
 | `deploy/bridge.service` | systemd unit (in this repo) |
 | `deploy/deploy.sh` | pull + `npm ci` + build + restart (in this repo) |
 | GitHub Actions | joins the tailnet, SSHes in, runs `deploy.sh` on push to `main` |
@@ -115,11 +115,11 @@ ln -sf "$(find /srv/claude-bridge/node_modules/@anthropic-ai -maxdepth 2 -name c
 claude login
 ```
 
-Create `.env` (binds to the tailnet IP):
+Create `.env` (binds to loopback; Tailscale serve fronts it with TLS — see step 5b):
 
 ```bash
 cp .env.example .env
-# Edit: set BIND_ADDRESS=<100.x.y.z from `tailscale ip -4`>, PORT, DEFAULT_MODEL, REPOS, etc.
+# Edit: keep BIND_ADDRESS=127.0.0.1, set PORT, DEFAULT_MODEL, REPOS, etc.
 ```
 
 First build so `web/dist` exists before the service starts:
@@ -140,7 +140,24 @@ systemctl status bridge          # should be active (running)
 journalctl -u bridge -f          # live logs
 ```
 
-Open the app from a tailnet device: `http://<MagicDNS-name>:8787`.
+## 5b. HTTPS via Tailscale serve
+
+The app listens on loopback only; Tailscale terminates TLS on `:443` (tailnet-only)
+with an auto-provisioned Let's Encrypt cert for the MagicDNS name and reverse-proxies
+to it. First enable **HTTPS Certificates** for the tailnet in the admin console
+(Settings → DNS → "HTTPS Certificates"), then:
+
+```bash
+tailscale serve --bg --https=443 http://127.0.0.1:8787
+tailscale serve status      # should show https://<MagicDNS-name> -> http://127.0.0.1:8787
+```
+
+The serve config lives in tailscaled state and survives reboots and redeploys (`deploy.sh`
+never touches it). `ufw allow in on tailscale0` already permits `:443` over the tailnet, so
+no extra firewall rule is needed. If HTTPS returns **502**, the app isn't reachable on the
+proxy target — check `BIND_ADDRESS=127.0.0.1` and that `bridge` is running.
+
+Open the app from a tailnet device: `https://<MagicDNS-name>` (no port).
 
 ## 6. Let the deploy user restart the service without a password
 
