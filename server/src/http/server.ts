@@ -1,8 +1,11 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import fastifyStatic from "@fastify/static";
+import fastifyMultipart from "@fastify/multipart";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, join, basename } from "node:path";
 import { existsSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { log } from "../logger.js";
 import * as dbm from "../db.js";
 import { emitGlobal } from "../bus.js";
@@ -64,6 +67,11 @@ export async function buildServer(): Promise<FastifyInstance> {
       }
     },
   );
+
+  // File uploads (chat attachments). 25 MB/file, up to 10 files per request.
+  await app.register(fastifyMultipart, {
+    limits: { fileSize: 25 * 1024 * 1024, files: 10 },
+  });
 
   // ---- REST API ----------------------------------------------------------
   app.get("/api/health", async () => ({ ok: true }));
@@ -235,6 +243,40 @@ export async function buildServer(): Promise<FastifyInstance> {
       } catch (err) {
         return reply.code(400).send({ error: errMsg(err) });
       }
+    },
+  );
+
+  // Upload chat attachments. Saved outside the repo (Bridge data dir) so they
+  // don't pollute the working tree; the agent reads them by absolute path.
+  app.post<{ Params: { id: string } }>(
+    "/api/repos/:id/upload",
+    async (req, reply) => {
+      const repo = requireRepo(req.params.id);
+      const destDir = join(
+        dirname(getConfig().dbPath),
+        "uploads",
+        repo.id,
+      );
+      await mkdir(destDir, { recursive: true });
+      const saved: { name: string; path: string; size: number }[] = [];
+      try {
+        for await (const part of req.files()) {
+          const original = basename(part.filename || "file");
+          const safe = original.replace(/[^A-Za-z0-9._-]/g, "_") || "file";
+          const dest = join(destDir, `${randomUUID().slice(0, 8)}-${safe}`);
+          const buf = await part.toBuffer(); // enforces the fileSize limit
+          await writeFile(dest, buf);
+          saved.push({ name: original, path: dest, size: buf.length });
+        }
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        if (code === "FST_REQ_FILE_TOO_LARGE")
+          return reply.code(413).send({ error: "File too large (max 25 MB)" });
+        return reply.code(400).send({ error: errMsg(err) });
+      }
+      if (saved.length === 0)
+        return reply.code(400).send({ error: "No files uploaded" });
+      return { files: saved };
     },
   );
 

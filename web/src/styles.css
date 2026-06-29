@@ -1971,3 +1971,63 @@ body::after {
   gap: 8px;
   font-weight: 600;
 }
+
+/* ---------- chat attachments + drag-drop ---------- */
+.chat-pane {
+  position: relative;
+}
+.chat-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 3px 6px 3px 8px;
+  font-size: 12px;
+  max-width: 240px;
+}
+.attach-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attach-size {
+  color: var(--text-dim);
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+.attach-x {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  flex: 0 0 auto;
+}
+.attach-x:hover {
+  color: var(--danger);
+}
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: var(--accent-bg);
+  border: 2px dashed var(--accent);
+  color: var(--accent);
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}

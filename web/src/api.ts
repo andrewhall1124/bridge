@@ -14,6 +14,7 @@ import type {
   SessionMeta,
   Settings,
   TranscriptItem,
+  UploadedFile,
 } from "./protocol";
 
 export class ApiError extends Error {
@@ -117,6 +118,30 @@ export const api = {
     request<ReferencesResult>(
       `/api/repos/${encodeURIComponent(repoId)}/references?symbol=${encodeURIComponent(symbol)}`
     ),
+  uploadFiles: async (repoId: string, files: File[]) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f, f.name);
+    // No JSON content-type — the browser sets the multipart boundary itself.
+    const res = await fetch(
+      `/api/repos/${encodeURIComponent(repoId)}/upload`,
+      { method: "POST", body: fd }
+    );
+    const text = await res.text();
+    let body: unknown = undefined;
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        /* non-JSON error body */
+      }
+    }
+    if (!res.ok) {
+      const msg =
+        (body as { error?: string })?.error ?? `Upload failed (${res.status})`;
+      throw new ApiError(msg, res.status);
+    }
+    return body as { files: UploadedFile[] };
+  },
   getDiff: (repoId: string) =>
     request<DiffResult | NotGitResult>(
       `/api/repos/${encodeURIComponent(repoId)}/diff`

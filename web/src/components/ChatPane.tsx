@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ws } from "../ws";
-import type { PermissionMode, SessionMeta } from "../protocol";
+import { api } from "../api";
+import type { PermissionMode, SessionMeta, UploadedFile } from "../protocol";
 import type { SessionStream } from "../hooks";
 import { Approval } from "./Approval";
 import { Question } from "./Question";
@@ -34,6 +35,11 @@ export function ChatPane({
   onSetMode,
 }: Props) {
   const [text, setText] = useState("");
+  const [attachments, setAttachments] = useState<UploadedFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const dragDepth = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,9 +75,18 @@ export function ChatPane({
 
   function send() {
     const t = text.trim();
-    if (!t || !session) return;
-    ws.sendText(session.id, t);
+    if ((!t && attachments.length === 0) || !session) return;
+    let body = t;
+    if (attachments.length > 0) {
+      const refs = attachments.map((a) => `- ${a.path}`).join("\n");
+      body =
+        (t ? `${t}\n\n` : "") +
+        `Attached files (use the Read tool to view them):\n${refs}`;
+    }
+    ws.sendText(session.id, body);
     setText("");
+    setAttachments([]);
+    setUploadError(null);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -81,8 +96,58 @@ export function ChatPane({
     }
   }
 
+  async function upload(files: File[]) {
+    if (!session || files.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const res = await api.uploadFiles(session.repoId, files);
+      setAttachments((a) => [...a, ...res.files]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData.files);
+    if (files.length > 0) {
+      e.preventDefault(); // pasting an image/file → upload instead of inserting
+      void upload(files);
+    }
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) void upload(files);
+  }
+  function onDragEnter(e: React.DragEvent) {
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+    dragDepth.current += 1;
+    setDragOver(true);
+  }
+  function onDragLeave() {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragOver(false);
+  }
+
   return (
-    <div className="pane chat-pane">
+    <div
+      className={`pane chat-pane ${dragOver ? "drag-over" : ""}`}
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => e.preventDefault()}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dragOver && (
+        <div className="drop-overlay">
+          <span>Drop files to attach</span>
+        </div>
+      )}
       <div className="chat-modebar">
         <span className="subtle">{session.title || "session"}</span>
         <span className="spacer" />
@@ -173,12 +238,36 @@ export function ChatPane({
             </button>
           )}
         </div>
+        {(attachments.length > 0 || uploading || uploadError) && (
+          <div className="chat-attachments">
+            {attachments.map((a, i) => (
+              <span className="attach-chip" key={`${a.path}-${i}`} title={a.path}>
+                <span className="attach-name">{a.name}</span>
+                <span className="attach-size">{formatSize(a.size)}</span>
+                <button
+                  className="attach-x"
+                  aria-label="Remove attachment"
+                  onClick={() =>
+                    setAttachments((list) => list.filter((_, j) => j !== i))
+                  }
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+            {uploading && <span className="attach-chip subtle">uploading…</span>}
+            {uploadError && (
+              <span className="system-line error">⚠ {uploadError}</span>
+            )}
+          </div>
+        )}
         <div className="chat-input-row">
           <textarea
             value={text}
-            placeholder="Message Claude… (Enter to send, Shift+Enter for newline)"
+            placeholder="Message Claude… (Enter to send, Shift+Enter for newline · drag/paste files to attach)"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
             rows={2}
           />
           <button className="btn btn-primary send-btn" onClick={send}>
@@ -188,6 +277,12 @@ export function ChatPane({
       </div>
     </div>
   );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function WorkingNote({ label, preview }: { label: string; preview?: string }) {

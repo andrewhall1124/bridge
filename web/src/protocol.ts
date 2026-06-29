@@ -46,6 +46,12 @@ export interface Settings {
   defaultPermissionMode: PermissionMode;
 }
 
+export interface UploadedFile {
+  name: string;
+  path: string;
+  size: number;
+}
+
 // ---- AskUserQuestion tool ----
 export interface QuestionOption {
   label: string;

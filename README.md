@@ -10,6 +10,9 @@ How it works:
 - **Chat** — send a message and watch Claude work in real time: streamed replies, live
   "thinking…" / "working…" progress, and approve/reject prompts when it wants to edit or
   run. Sessions persist and resume, and the same session can be opened from either device.
+  Drag files into the chat or paste an image — they're uploaded server-side (under
+  `data/uploads/`) and referenced by path in your message so the agent reads them (images
+  included, via Claude Code's Read tool).
 - **Code** — a separate tab with a file tree, read-only file viewer, and a diff of
   uncommitted changes you can commit or discard.
 
