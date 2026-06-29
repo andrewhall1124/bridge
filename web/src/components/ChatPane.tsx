@@ -220,82 +220,90 @@ export function ChatPane({
       </div>
 
       <div className="chat-input">
-        <div className="chat-input-controls">
-          <div className="mode-seg" role="group" aria-label="Permission mode">
-            {MODES.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                className={`mode-chip mode-${m.value} ${mode === m.value ? "active" : ""}`}
-                title={m.title}
-                aria-pressed={mode === m.value}
-                onClick={() => onSetMode(m.value)}
-              >
-                {m.abbr}
-              </button>
-            ))}
-          </div>
-          <span className="spacer" />
-          {running && (
-            <button
-              className="btn btn-danger btn-sm"
-              onClick={() => ws.interrupt(session.id)}
-            >
-              Stop
-            </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          onChange={onFilePick}
+        />
+        <div className="composer">
+          {(attachments.length > 0 || uploading || uploadError) && (
+            <div className="chat-attachments">
+              {attachments.map((a, i) => (
+                <span className="attach-chip" key={`${a.path}-${i}`} title={a.path}>
+                  <span className="attach-name">{a.name}</span>
+                  <span className="attach-size">{formatSize(a.size)}</span>
+                  <button
+                    className="attach-x"
+                    aria-label="Remove attachment"
+                    onClick={() =>
+                      setAttachments((list) => list.filter((_, j) => j !== i))
+                    }
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+              {uploading && <span className="attach-chip subtle">uploading…</span>}
+              {uploadError && (
+                <span className="system-line error">{uploadError}</span>
+              )}
+            </div>
           )}
-        </div>
-        {(attachments.length > 0 || uploading || uploadError) && (
-          <div className="chat-attachments">
-            {attachments.map((a, i) => (
-              <span className="attach-chip" key={`${a.path}-${i}`} title={a.path}>
-                <span className="attach-name">{a.name}</span>
-                <span className="attach-size">{formatSize(a.size)}</span>
-                <button
-                  className="attach-x"
-                  aria-label="Remove attachment"
-                  onClick={() =>
-                    setAttachments((list) => list.filter((_, j) => j !== i))
-                  }
-                >
-                  ✕
-                </button>
-              </span>
-            ))}
-            {uploading && <span className="attach-chip subtle">uploading…</span>}
-            {uploadError && (
-              <span className="system-line error">{uploadError}</span>
-            )}
-          </div>
-        )}
-        <div className="chat-input-row">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            hidden
-            onChange={onFilePick}
-          />
-          <button
-            className="btn attach-btn"
-            title="Attach files"
-            aria-label="Attach files"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-          >
-            +
-          </button>
           <textarea
+            className="composer-input"
             value={text}
             placeholder="Message Claude…"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKeyDown}
             onPaste={onPaste}
-            rows={2}
+            rows={1}
           />
-          <button className="btn btn-primary send-btn" onClick={send}>
-            Send
-          </button>
+          <div className="composer-bar">
+            <div className="mode-seg" role="group" aria-label="Permission mode">
+              {MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  className={`mode-chip mode-${m.value} ${mode === m.value ? "active" : ""}`}
+                  title={m.title}
+                  aria-pressed={mode === m.value}
+                  onClick={() => onSetMode(m.value)}
+                >
+                  {m.abbr}
+                </button>
+              ))}
+            </div>
+            <span className="spacer" />
+            <button
+              className="composer-btn attach"
+              title="Attach files"
+              aria-label="Attach files"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              +
+            </button>
+            {running ? (
+              <button
+                className="composer-btn stop"
+                title="Stop"
+                onClick={() => ws.interrupt(session.id)}
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                className="composer-btn send"
+                title="Send"
+                onClick={send}
+                disabled={!text.trim() && attachments.length === 0}
+              >
+                Send
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

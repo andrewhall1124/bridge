@@ -681,35 +681,84 @@ select:focus {
   padding: 10px calc(10px + var(--safe-right)) calc(10px + var(--safe-bottom))
     calc(10px + var(--safe-left));
   background: var(--bg-1);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   flex: 0 0 auto;
 }
-.chat-input-controls {
+
+/* Unified composer: text on top, a slim control bar beneath (mode left,
+   attach + send right) — one bordered card, not three separate boxes. */
+.composer {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
-.toggle {
+.composer:focus-within {
+  border-color: var(--accent);
+}
+.composer-input {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  resize: none;
+  width: 100%;
+  padding: 10px 12px;
+  min-height: 42px;
+  max-height: 160px;
+  outline: none;
+}
+.composer-input:focus {
+  border: none;
+}
+.composer-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  padding: 6px 6px 6px 6px;
+}
+.composer-bar .mode-seg {
+  flex: 0 1 auto;
+}
+.composer-btn {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid transparent;
   color: var(--text-dim);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  min-height: 30px;
+  font-size: 13px;
   cursor: pointer;
 }
-.chat-input-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
+.composer-btn:hover {
+  background: var(--bg-2);
+  color: var(--text);
 }
-.chat-input-row textarea {
-  flex: 1;
-  max-height: 160px;
+.composer-btn.attach {
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 10px;
+  color: var(--text);
 }
-.send-btn {
-  align-self: stretch;
+.composer-btn.send {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.composer-btn.send:hover {
+  background: var(--accent-2);
+}
+.composer-btn.send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.composer-btn.stop {
+  border-color: #5a2730;
+  color: var(--danger);
+}
+.composer-btn.stop:hover {
+  background: #2a1418;
 }
 
 /* ---------- approvals ---------- */
@@ -1985,7 +2034,7 @@ body::after {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  padding: 4px 0 2px;
+  padding: 8px 8px 0;
 }
 .attach-chip {
   display: inline-flex;
@@ -2064,18 +2113,20 @@ body::after {
 }
 
 @media (max-width: 600px) {
-  /* Permission-mode selector spans the full width, chips share it evenly. */
-  .chat-input-controls {
-    flex-wrap: wrap;
-  }
-  .mode-seg {
-    width: 100%;
+  /* Keep the composer controls on one slim row; tighten the mode chips to fit
+     alongside attach + send. */
+  .composer-bar {
+    gap: 6px;
+    padding: 6px;
   }
   .mode-chip {
-    flex: 1 1 0;
-    text-align: center;
-    padding-left: 2px;
-    padding-right: 2px;
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+  .composer-btn.send,
+  .composer-btn.stop {
+    padding-left: 12px;
+    padding-right: 12px;
   }
   /* A touch more room for messages on small screens. */
   .chat-scroll {
