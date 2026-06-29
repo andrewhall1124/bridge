@@ -5,7 +5,6 @@
   "anthropicApiKey": null,
   "defaultModel": "sonnet",
   "defaultPermissionMode": "default",
-  "jobConcurrency": 1,
   "repos": [
     {
       "id": "example",

@@ -5,7 +5,6 @@ import type {
   DiffResult,
   FileContent,
   FileListing,
-  Job,
   NotGitResult,
   Repo,
   SessionMeta,
@@ -91,17 +90,6 @@ export const api = {
     request<{ ok: true }>(`/api/sessions/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
-
-  getJobs: () => request<{ jobs: Job[] }>("/api/jobs"),
-  createJob: (repoId: string, prompt: string) =>
-    request<{ job: Job }>("/api/jobs", {
-      method: "POST",
-      body: JSON.stringify({ repoId, prompt }),
-    }),
-  getJob: (id: string) =>
-    request<{ job: Job; transcript: TranscriptItem[] }>(
-      `/api/jobs/${encodeURIComponent(id)}`
-    ),
 
   listFiles: (repoId: string, path = "") =>
     request<FileListing>(

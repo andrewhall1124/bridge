@@ -7,7 +7,6 @@ import { log } from "../logger.js";
 import * as dbm from "../db.js";
 import { emitGlobal } from "../bus.js";
 import { closeSession } from "../agent/sessionManager.js";
-import { enqueue } from "../jobs/queue.js";
 import * as git from "../git/repo.js";
 import type { PermissionMode, Repo, Settings } from "../protocol.js";
 
@@ -186,28 +185,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     dbm.deleteSession(session.id);
     emitGlobal({ type: "sessions_changed" });
     return { ok: true };
-  });
-
-  // Jobs
-  app.get("/api/jobs", async () => ({ jobs: dbm.listJobs() }));
-
-  app.post<{ Body: { repoId?: string; prompt?: string } }>(
-    "/api/jobs",
-    async (req, reply) => {
-      const { repoId, prompt } = req.body ?? {};
-      if (!repoId || !prompt?.trim())
-        return reply.code(400).send({ error: "repoId and prompt are required" });
-      requireRepo(repoId);
-      const job = enqueue(repoId, prompt.trim());
-      return { job };
-    },
-  );
-
-  app.get<{ Params: { id: string } }>("/api/jobs/:id", async (req, reply) => {
-    const job = dbm.getJob(req.params.id);
-    if (!job) return reply.code(404).send({ error: "Job not found" });
-    const transcript = job.sessionId ? dbm.getTranscript(job.sessionId) : [];
-    return { job, transcript };
   });
 
   // Repo file browsing

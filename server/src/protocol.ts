@@ -23,21 +23,6 @@ export interface SessionMeta {
   lastActiveAt: string;
 }
 
-export type JobStatus = "queued" | "running" | "done" | "error";
-
-export interface Job {
-  id: string;
-  repoId: string;
-  prompt: string;
-  status: JobStatus;
-  sessionId: string | null;
-  resultSummary: string | null;
-  changedFiles: string[] | null;
-  error: string | null;
-  createdAt: string;
-  finishedAt: string | null;
-}
-
 // A normalized transcript entry persisted to SQLite and streamed to clients.
 export type TranscriptType =
   | "user_text"

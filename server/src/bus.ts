@@ -1,16 +1,15 @@
 import type { ServerEvent } from "./protocol.js";
 
 // Lightweight in-process pub/sub. WebSocket connections subscribe to a session
-// id; the session manager and job queue emit ServerEvents that get fanned out
-// to every subscriber of that session. A "*" global channel carries list-level
-// notifications (sessions/jobs changed) so clients can refresh.
+// id; the session manager emits ServerEvents that get fanned out to every
+// subscriber of that session. A global channel carries list-level
+// notifications (sessions/repos changed) so clients can refresh.
 
 export type SessionListener = (event: ServerEvent) => void;
 export type GlobalListener = (event: GlobalEvent) => void;
 
 export type GlobalEvent =
   | { type: "sessions_changed" }
-  | { type: "jobs_changed" }
   | { type: "repos_changed" };
 
 const sessionListeners = new Map<string, Set<SessionListener>>();

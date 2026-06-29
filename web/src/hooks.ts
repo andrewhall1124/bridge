@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api";
 import { ws, type ConnState } from "./ws";
 import type {
@@ -29,13 +29,6 @@ export interface PendingQuestion {
   questions: QuestionItem[];
 }
 
-export interface ActivityEntry {
-  id: string;
-  kind: "status" | "done";
-  text: string;
-  at: string;
-}
-
 export interface SessionStream {
   transcript: TranscriptItem[];
   streamingText: string;
@@ -45,8 +38,6 @@ export interface SessionStream {
   permissionMode: PermissionMode | null;
   approvals: PendingApproval[];
   questions: PendingQuestion[];
-  activity: ActivityEntry[];
-  lastResult: ResultContent | null;
   loading: boolean;
   error: string | null;
 }
@@ -60,15 +51,12 @@ const EMPTY: SessionStream = {
   permissionMode: null,
   approvals: [],
   questions: [],
-  activity: [],
-  lastResult: null,
   loading: false,
   error: null,
 };
 
 export function useSessionStream(sessionId: string | null): SessionStream {
   const [state, setState] = useState<SessionStream>(EMPTY);
-  const counter = useRef(0);
 
   useEffect(() => {
     if (!sessionId) {
@@ -98,8 +86,6 @@ export function useSessionStream(sessionId: string | null): SessionStream {
           error: err instanceof Error ? err.message : String(err),
         }));
       });
-
-    const nextId = () => `act-${Date.now()}-${counter.current++}`;
 
     const off = ws.onEvent((ev: AnyServerEvent) => {
       if (!("sessionId" in ev) || ev.sessionId !== sessionId) return;
@@ -180,17 +166,6 @@ export function useSessionStream(sessionId: string | null): SessionStream {
             streamingText: ev.status === "running" ? "" : p.streamingText,
             streamingThinking: ev.status === "running" ? "" : p.streamingThinking,
             streaming: ev.status === "running" ? false : p.streaming,
-            activity: [
-              ...p.activity,
-              {
-                id: nextId(),
-                kind: "status",
-                text: ev.error
-                  ? `status: ${ev.status} — ${ev.error}`
-                  : `status: ${ev.status}`,
-                at: new Date().toISOString(),
-              },
-            ],
           }));
           break;
         case "done":
@@ -199,16 +174,6 @@ export function useSessionStream(sessionId: string | null): SessionStream {
             streaming: false,
             streamingText: "",
             streamingThinking: "",
-            lastResult: ev.result,
-            activity: [
-              ...p.activity,
-              {
-                id: nextId(),
-                kind: "done",
-                text: formatResult(ev.result),
-                at: new Date().toISOString(),
-              },
-            ],
           }));
           break;
         default:

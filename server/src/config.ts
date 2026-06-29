@@ -15,7 +15,6 @@ export interface AppConfig {
   anthropicApiKey: string | null;
   defaultModel: string;
   defaultPermissionMode: PermissionMode;
-  jobConcurrency: number;
   repos: Repo[];
 }
 
@@ -26,7 +25,6 @@ interface FileConfig {
   anthropicApiKey?: string | null;
   defaultModel?: string;
   defaultPermissionMode?: PermissionMode;
-  jobConcurrency?: number;
   repos?: Repo[];
   reposDir?: string;
 }
@@ -151,7 +149,6 @@ export function getConfig(): AppConfig {
       process.env.DEFAULT_PERMISSION_MODE,
       file.defaultPermissionMode ?? "default",
     ),
-    jobConcurrency: Math.max(1, Number(process.env.JOB_CONCURRENCY ?? file.jobConcurrency ?? 1)),
     repos: resolveRepos(file),
   };
 

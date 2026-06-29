@@ -274,12 +274,84 @@ function ThinkingView({ text }: { text: string }) {
   );
 }
 
+// A run of consecutive tool calls, collapsed into one summary row (like the
+// thinking row). Expands to the individual tool rows, each independently
+// expandable for its input/output.
+function ToolGroup({ tools }: { tools: ToolNode[] }) {
+  const [open, setOpen] = useState(false);
+  const running = tools.some((t) => !t.done);
+  const errored = tools.some((t) => t.isError && !t.isAnswer);
+
+  const counts = new Map<string, number>();
+  for (const t of tools) {
+    const name = t.isAnswer ? "Question" : t.name;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const summary = [...counts.entries()]
+    .map(([n, c]) => (c > 1 ? `${n} ×${c}` : n))
+    .join(", ");
+
+  const statusIcon = running ? (
+    <span className="spinner" aria-label="running" />
+  ) : errored ? (
+    <span className="tool-status-icon error">✗</span>
+  ) : (
+    <span className="tool-status-icon done">✓</span>
+  );
+
+  return (
+    <div className={`toolgroup ${running ? "running" : errored ? "error" : "done"}`}>
+      <button className="toolgroup-head" onClick={() => setOpen((o) => !o)}>
+        <span className="tool-node-icon">🛠</span>
+        <span className="tool-node-name">working</span>
+        <span className="toolgroup-count">{tools.length} steps</span>
+        {!open && <span className="tool-node-summary">{summary}</span>}
+        {statusIcon}
+        <span className="tool-toggle">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="toolgroup-body">
+          {tools.map((t) => (
+            <ToolView key={t.key} node={t} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type RenderNode = Node | { kind: "toolgroup"; key: string; tools: ToolNode[] };
+
+// Fold runs of consecutive tool nodes into a single toolgroup (groups of one
+// stay as a standalone tool row).
+function groupTools(nodes: Node[]): RenderNode[] {
+  const out: RenderNode[] = [];
+  let buf: ToolNode[] = [];
+  const flush = () => {
+    if (buf.length === 1) out.push(buf[0]!);
+    else if (buf.length > 1)
+      out.push({ kind: "toolgroup", key: `group-${buf[0]!.key}`, tools: buf });
+    buf = [];
+  };
+  for (const n of nodes) {
+    if (n.kind === "tool") buf.push(n);
+    else {
+      flush();
+      out.push(n);
+    }
+  }
+  flush();
+  return out;
+}
+
 export function Transcript({ items }: { items: TranscriptItem[] }) {
-  const nodes = buildNodes(items);
+  const nodes = groupTools(buildNodes(items));
   return (
     <>
       {nodes.map((n) => {
         switch (n.kind) {
+          case "toolgroup":
+            return <ToolGroup key={n.key} tools={n.tools} />;
           case "user":
             return (
               <div key={n.key} className="msg-row user-row">

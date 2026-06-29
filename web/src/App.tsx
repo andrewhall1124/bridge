@@ -31,14 +31,36 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
+// ---- URL persistence: /<tab>/<repoId>/<sessionId> ----
+const TAB_IDS = ["chat", "code", "settings"] as const;
+
+function parsePath(): { tab: Tab; repoId: string | null; sessionId: string | null } {
+  const segs = window.location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  const tab = (TAB_IDS as readonly string[]).includes(segs[0] ?? "")
+    ? (segs[0] as Tab)
+    : "chat";
+  return { tab, repoId: segs[1] ?? null, sessionId: segs[2] ?? null };
+}
+
+function buildPath(tab: Tab, repoId: string | null, sessionId: string | null): string {
+  let p = `/${tab}`;
+  if (repoId) {
+    p += `/${encodeURIComponent(repoId)}`;
+    if (sessionId) p += `/${encodeURIComponent(sessionId)}`;
+  }
+  return p;
+}
+
 export function App() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
-  const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    null
+  const [selectedRepoId, setSelectedRepoId] = useState<string | null>(
+    () => parsePath().repoId
   );
-  const [tab, setTab] = useState<Tab>("chat");
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    () => parsePath().sessionId
+  );
+  const [tab, setTab] = useState<Tab>(() => parsePath().tab);
   const [creating, setCreating] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addRepoOpen, setAddRepoOpen] = useState(false);
@@ -83,6 +105,26 @@ export function App() {
     });
     return off;
   }, [loadSessions, loadRepos]);
+
+  // Keep the URL in sync with the current tab/repo/session so a refresh
+  // restores them (and back/forward works).
+  useEffect(() => {
+    const path = buildPath(tab, selectedRepoId, selectedSessionId);
+    if (window.location.pathname !== path) {
+      window.history.replaceState(null, "", path);
+    }
+  }, [tab, selectedRepoId, selectedSessionId]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const p = parsePath();
+      setTab(p.tab);
+      setSelectedRepoId(p.repoId);
+      setSelectedSessionId(p.sessionId);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   function selectRepo(id: string) {
     setSelectedRepoId(id);

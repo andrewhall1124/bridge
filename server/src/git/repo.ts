@@ -217,7 +217,7 @@ function relPosix(root: string, abs: string): string {
   return r.split(sep).join("/");
 }
 
-// Returns paths changed relative to HEAD (for job result summaries).
+// Returns paths changed relative to HEAD.
 export async function changedFiles(root: string): Promise<string[]> {
   const entries = await status(root);
   return entries.map((e) => e.path);

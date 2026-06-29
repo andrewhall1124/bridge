@@ -21,21 +21,6 @@ export interface SessionMeta {
   lastActiveAt: string;
 }
 
-export type JobStatus = "queued" | "running" | "done" | "error";
-
-export interface Job {
-  id: string;
-  repoId: string;
-  prompt: string;
-  status: JobStatus;
-  sessionId: string | null;
-  resultSummary: string | null;
-  changedFiles: string[] | null;
-  error: string | null;
-  createdAt: string;
-  finishedAt: string | null;
-}
-
 export type TranscriptType =
   | "user_text"
   | "assistant"
@@ -199,7 +184,6 @@ export type ServerEvent =
 // Global events on the same socket
 export type GlobalEvent =
   | { type: "sessions_changed" }
-  | { type: "jobs_changed" }
   | { type: "repos_changed" };
 
 export type AddRepoMode = "existing" | "init" | "clone";

@@ -5,16 +5,17 @@ VPS — usable from your phone and your laptop, reachable only over your private
 **Tailscale** network. It bridges your devices to Claude Code running under *your own*
 Claude subscription.
 
-Three ways to use it against the same backend:
+How it works:
 
-- **Chat** — send a message, watch Claude work, reply.
-- **Task queue** — fire off a job, close the app, check the result later.
-- **Live watch** — open a running session and watch the activity stream in real time,
-  from either device.
+- **Chat** — send a message and watch Claude work in real time: streamed replies, live
+  "thinking…" / "working…" progress, and approve/reject prompts when it wants to edit or
+  run. Sessions persist and resume, and the same session can be opened from either device.
+- **Code** — a separate tab with a file tree, read-only file viewer, and a diff of
+  uncommitted changes you can commit or discard.
 
 It wraps Claude Code with a tunable default persona (a system prompt + each repo's
-`CLAUDE.md`) and a code/diff viewer so you can review, commit, or discard changes from
-either device.
+`CLAUDE.md`). The selected repo, session, and tab live in the URL, so a refresh (or a
+bookmark/deep link) restores exactly where you were.
 
 > Codename "Bridge". Single user, no accounts, no sign-up — **access control is the
 > tailnet**. This is for the owner's own use with the owner's own subscription; it is not
@@ -32,8 +33,7 @@ either device.
                                               │     ├── HTTP API + static PWA   (Fastify)
                                               │     ├── WebSocket (live stream + approvals)
                                               │     ├── Session manager (Claude Agent SDK)
-                                              │     ├── Job queue (in-process)
-                                              │     └── SQLite (sessions, jobs, transcripts)
+                                              │     └── SQLite (sessions, transcripts, settings)
                                               │
                                               ├── Claude Agent SDK ──► Claude Code engine
                                               │     (authenticated via your CLI login)
@@ -108,7 +108,6 @@ repos.
   "dbPath": "./data/bridge.sqlite",
   "defaultModel": "sonnet",
   "defaultPermissionMode": "default",
-  "jobConcurrency": 1,
   "repos": [
     { "id": "web", "name": "My Web App", "path": "/srv/repos/web" },
     { "id": "api", "name": "API Service", "path": "/srv/repos/api" }
@@ -207,7 +206,6 @@ WantedBy=multi-user.target
 | `anthropicApiKey`       | `ANTHROPIC_API_KEY`        | unset                 | **Unset = subscription billing.** Set = API-key billing |
 | `defaultModel`          | `DEFAULT_MODEL`            | `sonnet`              | SDK alias: `opus` / `sonnet` / `haiku`, or an exact id |
 | `defaultPermissionMode` | `DEFAULT_PERMISSION_MODE`  | `default`             | `default` / `acceptEdits` / `plan` / `bypassPermissions` (⚠ runs everything unprompted) |
-| `jobConcurrency`        | `JOB_CONCURRENCY`          | `1`                   | Jobs run concurrently (queue) |
 | `repos`                 | `REPOS` / `REPOS_DIR`      | —                     | Repo registry |
 
 The default **system prompt**, **model**, and **permission mode** are also editable live
@@ -218,11 +216,16 @@ in the Settings tab (stored in SQLite, seeded from config on first boot).
 ## How it works
 
 - **Sessions** use the Agent SDK with the working directory set to the selected repo. The
-  SDK session id is persisted so a session can be **resumed** later (this powers live
-  watch from a second device and resuming after the app was closed). Every SDK message
+  SDK session id is persisted so a session can be **resumed** later (this powers opening a
+  session from a second device and resuming after the app was closed). Every SDK message
   (assistant text, tool calls/results, result) is streamed to all subscribed WebSocket
   clients and appended to the SQLite transcript as it arrives. Sessions can be renamed or
   deleted from the sidebar (delete tears down the live agent and removes its transcript).
+- **Transcript UI:** assistant prose stays primary; **thinking** and runs of consecutive
+  **tool calls** collapse into single expandable rows (a "💭 thinking" row and a
+  "🛠 working · N steps" row), each openable to see the full reasoning or every tool's
+  input/output. A live "Thinking… / Running <tool>… / Working…" indicator shows progress
+  even when there's no output yet.
 - **Permissions:** chat sessions pass a `canUseTool` approval callback. When Claude wants
   to write/edit/run, the server emits an `approval_request` over the WebSocket and waits;
   the client shows Approve/Reject. Each session has a **permission-mode selector** in the
@@ -233,16 +236,13 @@ in the Settings tab (stored in SQLite, seeded from config on first boot).
 - **Questions:** when Claude uses the `AskUserQuestion` tool, Bridge renders a proper
   question picker (each question's options as single- or multi-select, plus an "Other"
   free-text field) instead of a generic approve/reject. Your selection is delivered back
-  to the model as the tool's answer. Unattended **jobs** auto-decline questions (no human
-  is available) so they never hang.
-- **Jobs** run unattended with auto-approval so they never block, recording a transcript,
-  a short result summary, and the list of changed files.
+  to the model as the tool's answer.
 - **Code & diff:** all repo file/diff/commit/discard operations are scoped to the repo
   root and reject any path that escapes it.
 
 ### Model & persona
 
-- One tunable **default system prompt** (Settings), applied to every session/job via the
+- One tunable **default system prompt** (Settings), applied to every session via the
   SDK `systemPrompt` (appended to the Claude Code preset, so tool behavior and `CLAUDE.md`
   pickup are preserved).
 - Per-repo `CLAUDE.md` for project-specific context.
@@ -267,8 +267,10 @@ preview was the alternative; `query()` is stable and covers every requirement he
 5. The server is unreachable from the public internet (bound to Tailscale only). ✅ *(operator-enforced via `bindAddress` + firewall)*
 6. Usage draws from the subscription when `ANTHROPIC_API_KEY` is unset. ✅
 
-v2 (multi-repo, session list + resume, persisted reopenable transcripts, job queue) and
-v3 (multi-device live-watch, settings UI, auto-approve toggle, interrupt) are included.
+Multi-repo support, a session list with resume, persisted reopenable transcripts,
+multi-device access, a settings UI, per-session permission modes, and interrupt are all
+included. (An earlier fire-and-forget job queue was removed in favor of the focused
+chat + code-review surface.)
 
 ---
 
@@ -283,9 +285,8 @@ claude-bridge/
 │       ├── db.ts           # SQLite schema + helpers
 │       ├── protocol.ts     # shared REST/WS types
 │       ├── bus.ts          # in-process pub/sub for live events
-│       ├── agent/          # session manager (query(), approvals, resume, jobs)
+│       ├── agent/          # session manager (query(), approvals, resume, interrupt)
 │       ├── git/            # status/diff/commit/discard with path-escape guards
-│       ├── jobs/           # in-process job queue
 │       ├── http/           # REST routes + static PWA serving
 │       └── ws/             # WebSocket hub
 ├── web/                    # React + Vite PWA (built to web/dist, served by the server)

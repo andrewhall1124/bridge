@@ -5,8 +5,6 @@ import { randomUUID } from "node:crypto";
 import { getConfig, DEFAULT_SYSTEM_PROMPT } from "./config.js";
 import { log } from "./logger.js";
 import type {
-  Job,
-  JobStatus,
   PermissionMode,
   Repo,
   SessionMeta,
@@ -49,20 +47,6 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, created_at);
-
-CREATE TABLE IF NOT EXISTS jobs (
-  id             TEXT PRIMARY KEY,
-  repo_id        TEXT NOT NULL,
-  prompt         TEXT NOT NULL,
-  status         TEXT NOT NULL DEFAULT 'queued',
-  session_id     TEXT,
-  result_summary TEXT,
-  changed_files  TEXT,
-  error          TEXT,
-  created_at     TEXT NOT NULL,
-  finished_at    TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status, created_at);
 
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
@@ -238,8 +222,7 @@ export function setSessionTitle(id: string, title: string): void {
   db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`).run(title, id);
 }
 
-// Delete a session and its transcript. Jobs that referenced it keep their row
-// (their session_id simply points at a now-empty transcript).
+// Delete a session and its transcript.
 export function deleteSession(id: string): void {
   const tx = db.transaction((sessionId: string) => {
     db.prepare(`DELETE FROM messages WHERE session_id = ?`).run(sessionId);
@@ -307,102 +290,10 @@ export function getTranscript(sessionId: string): TranscriptItem[] {
   return rows.map(rowToItem);
 }
 
-// ---- Jobs ----------------------------------------------------------------
-interface JobRow {
-  id: string;
-  repo_id: string;
-  prompt: string;
-  status: string;
-  session_id: string | null;
-  result_summary: string | null;
-  changed_files: string | null;
-  error: string | null;
-  created_at: string;
-  finished_at: string | null;
-}
-
-function rowToJob(r: JobRow): Job {
-  return {
-    id: r.id,
-    repoId: r.repo_id,
-    prompt: r.prompt,
-    status: r.status as JobStatus,
-    sessionId: r.session_id,
-    resultSummary: r.result_summary,
-    changedFiles: r.changed_files ? (JSON.parse(r.changed_files) as string[]) : null,
-    error: r.error,
-    createdAt: r.created_at,
-    finishedAt: r.finished_at,
-  };
-}
-
-export function createJob(repoId: string, prompt: string): Job {
-  const id = randomUUID();
-  db.prepare(
-    `INSERT INTO jobs (id, repo_id, prompt, status, created_at) VALUES (?, ?, ?, 'queued', ?)`,
-  ).run(id, repoId, prompt, now());
-  return getJob(id)!;
-}
-
-export function getJob(id: string): Job | undefined {
-  const row = db.prepare(`SELECT * FROM jobs WHERE id = ?`).get(id) as JobRow | undefined;
-  return row ? rowToJob(row) : undefined;
-}
-
-export function listJobs(): Job[] {
-  const rows = db.prepare(`SELECT * FROM jobs ORDER BY created_at DESC`).all() as JobRow[];
-  return rows.map(rowToJob);
-}
-
-export function updateJob(
-  id: string,
-  patch: Partial<{
-    status: JobStatus;
-    sessionId: string | null;
-    resultSummary: string | null;
-    changedFiles: string[] | null;
-    error: string | null;
-    finishedAt: string | null;
-  }>,
-): Job | undefined {
-  const current = getJob(id);
-  if (!current) return undefined;
-  const next = {
-    status: patch.status ?? current.status,
-    session_id: patch.sessionId !== undefined ? patch.sessionId : current.sessionId,
-    result_summary:
-      patch.resultSummary !== undefined ? patch.resultSummary : current.resultSummary,
-    changed_files:
-      patch.changedFiles !== undefined
-        ? patch.changedFiles
-          ? JSON.stringify(patch.changedFiles)
-          : null
-        : current.changedFiles
-          ? JSON.stringify(current.changedFiles)
-          : null,
-    error: patch.error !== undefined ? patch.error : current.error,
-    finished_at: patch.finishedAt !== undefined ? patch.finishedAt : current.finishedAt,
-  };
-  db.prepare(
-    `UPDATE jobs SET status=@status, session_id=@session_id, result_summary=@result_summary,
-       changed_files=@changed_files, error=@error, finished_at=@finished_at WHERE id=@id`,
-  ).run({ ...next, id });
-  return getJob(id);
-}
-
-// On boot, any job left mid-flight is stale; mark errored so the queue is clean.
-export function resetRunningJobs(): void {
-  db.prepare(
-    `UPDATE jobs SET status='error', error='Server restarted while job was running', finished_at=?
-     WHERE status IN ('queued','running')`,
-  ).run(now());
-}
-
 export function initDb(): void {
   syncRepos(config.repos);
   seedSettings();
   resetRunningSessions();
-  resetRunningJobs();
   log.info(`SQLite ready at ${config.dbPath} (${config.repos.length} repo(s) configured)`);
 }
 
