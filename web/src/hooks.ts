@@ -39,6 +39,7 @@ export interface ActivityEntry {
 export interface SessionStream {
   transcript: TranscriptItem[];
   streamingText: string;
+  streamingThinking: string;
   streaming: boolean;
   status: SessionStatus;
   permissionMode: PermissionMode | null;
@@ -53,6 +54,7 @@ export interface SessionStream {
 const EMPTY: SessionStream = {
   transcript: [],
   streamingText: "",
+  streamingThinking: "",
   streaming: false,
   status: "idle",
   permissionMode: null,
@@ -115,6 +117,11 @@ export function useSessionStream(sessionId: string | null): SessionStream {
               streaming: true,
               streamingText: p.streamingText + ev.text,
             }));
+          } else if (ev.blockType === "thinking") {
+            setState((p) => ({
+              ...p,
+              streamingThinking: p.streamingThinking + ev.text,
+            }));
           }
           break;
         case "message":
@@ -123,8 +130,10 @@ export function useSessionStream(sessionId: string | null): SessionStream {
             return {
               ...p,
               transcript: [...p.transcript, ev.item],
-              // final assistant block replaces the provisional stream
+              // final blocks now live in the transcript; clear the provisional
+              // streaming buffers for this segment.
               streamingText: isAssistant ? "" : p.streamingText,
+              streamingThinking: isAssistant ? "" : p.streamingThinking,
               streaming: isAssistant ? false : p.streaming,
             };
           });
@@ -167,8 +176,9 @@ export function useSessionStream(sessionId: string | null): SessionStream {
           setState((p) => ({
             ...p,
             status: ev.status,
-            // new turn starting -> reset streaming buffer
+            // new turn starting -> reset streaming buffers
             streamingText: ev.status === "running" ? "" : p.streamingText,
+            streamingThinking: ev.status === "running" ? "" : p.streamingThinking,
             streaming: ev.status === "running" ? false : p.streaming,
             activity: [
               ...p.activity,
@@ -188,6 +198,7 @@ export function useSessionStream(sessionId: string | null): SessionStream {
             ...p,
             streaming: false,
             streamingText: "",
+            streamingThinking: "",
             lastResult: ev.result,
             activity: [
               ...p.activity,

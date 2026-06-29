@@ -7,7 +7,7 @@ import type {
   Repo,
   TranscriptItem,
 } from "../protocol";
-import { MessageItem } from "./MessageItem";
+import { Transcript } from "./Transcript";
 
 interface Props {
   repos: Repo[];
@@ -103,9 +103,7 @@ export function Jobs({ repos, selectedRepoId }: Props) {
           </div>
         )}
         <div className="job-transcript">
-          {openTranscript.map((item) => (
-            <MessageItem key={item.id} item={item} />
-          ))}
+          <Transcript items={openTranscript} />
         </div>
       </div>
     );

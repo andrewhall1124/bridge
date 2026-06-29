@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ws } from "../ws";
-import type { AssistantBlock, PermissionMode, SessionMeta } from "../protocol";
+import type { PermissionMode, SessionMeta } from "../protocol";
 import type { SessionStream } from "../hooks";
 import { Approval } from "./Approval";
 import { Question } from "./Question";
-import { MessageItem } from "./MessageItem";
+import { Transcript, pendingToolName } from "./Transcript";
 import { RichText } from "./RichText";
 
 const MODE_OPTIONS: { value: PermissionMode; label: string }[] = [
@@ -38,22 +38,21 @@ export function ChatPane({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [stream.transcript, stream.streamingText, stream.approvals, stream.questions]);
+  }, [
+    stream.transcript,
+    stream.streamingText,
+    stream.streamingThinking,
+    stream.status,
+    stream.approvals,
+    stream.questions,
+  ]);
 
-  // Map each tool_use id to its tool name so tool_result blocks can be rendered
-  // contextually (e.g. an AskUserQuestion result is the user's answer, not an
-  // error). Must run before any early return — hooks can't be conditional.
-  const toolNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const item of stream.transcript) {
-      if (item.type === "assistant" && Array.isArray(item.content)) {
-        for (const b of item.content as AssistantBlock[]) {
-          if (b.type === "tool_use") m.set(b.id, b.name);
-        }
-      }
-    }
-    return m;
-  }, [stream.transcript]);
+  // The tool currently awaiting a result, for the live progress label. Must run
+  // before any early return — hooks can't be conditional.
+  const pendingTool = useMemo(
+    () => pendingToolName(stream.transcript),
+    [stream.transcript],
+  );
 
   if (!session) {
     return (
@@ -98,13 +97,7 @@ export function ChatPane({
             No messages yet. Say something below.
           </div>
         )}
-        {stream.transcript.map((item) => (
-          <MessageItem
-            key={item.id}
-            item={item}
-            resolveToolName={(id) => toolNameById.get(id)}
-          />
-        ))}
+        <Transcript items={stream.transcript} />
 
         {stream.streaming && stream.streamingText && (
           <div className="msg-row assistant-row">
@@ -113,6 +106,23 @@ export function ChatPane({
               <span className="cursor">▋</span>
             </div>
           </div>
+        )}
+
+        {running && !(stream.streaming && stream.streamingText) && (
+          <WorkingNote
+            label={
+              stream.streamingThinking
+                ? "Thinking"
+                : pendingTool
+                  ? `Running ${pendingTool}`
+                  : "Working"
+            }
+            preview={
+              stream.streamingThinking
+                ? stream.streamingThinking.replace(/\s+/g, " ").trim().slice(-180)
+                : undefined
+            }
+          />
         )}
 
         {stream.approvals.map((a) => (
@@ -173,6 +183,23 @@ export function ChatPane({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function WorkingNote({ label, preview }: { label: string; preview?: string }) {
+  return (
+    <div className="working-note">
+      <div className="working-head">
+        <span className="spinner" />
+        <span className="working-label">{label}</span>
+        <span className="working-dots">
+          <i />
+          <i />
+          <i />
+        </span>
+      </div>
+      {preview && <div className="working-preview">{preview}</div>}
     </div>
   );
 }
