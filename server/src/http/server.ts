@@ -9,7 +9,23 @@ import { emitGlobal } from "../bus.js";
 import { closeSession } from "../agent/sessionManager.js";
 import { enqueue } from "../jobs/queue.js";
 import * as git from "../git/repo.js";
-import type { PermissionMode, Settings } from "../protocol.js";
+import type { PermissionMode, Repo, Settings } from "../protocol.js";
+
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "repo"
+  );
+}
+
+function uniqueRepoId(base: string): string {
+  let id = base;
+  let n = 2;
+  while (dbm.getRepo(id)) id = `${base}-${n++}`;
+  return id;
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = resolve(process.env.WEB_DIST ?? resolve(here, "../../../web/dist"));
@@ -51,6 +67,62 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.get("/api/health", async () => ({ ok: true }));
 
   app.get("/api/repos", async () => ({ repos: dbm.listRepos() }));
+
+  // Add a repo to the picker. Three modes:
+  //   existing — register a directory already on disk
+  //   init     — create a new directory and `git init`
+  //   clone    — `git clone <url>` into the destination path
+  app.post<{
+    Body: { mode?: "existing" | "init" | "clone"; name?: string; path?: string; url?: string };
+  }>("/api/repos", async (req, reply) => {
+    const body = req.body ?? {};
+    const name = body.name?.trim();
+    const mode = body.mode ?? "existing";
+    if (!name) return reply.code(400).send({ error: "name is required" });
+
+    try {
+      let absPath: string;
+      if (mode === "clone") {
+        const url = body.url?.trim();
+        const dest = body.path?.trim();
+        if (!url) return reply.code(400).send({ error: "url is required to clone" });
+        if (!dest)
+          return reply.code(400).send({ error: "destination path is required to clone" });
+        absPath = git.expandPath(dest);
+        await git.gitClone(url, absPath);
+      } else if (mode === "init") {
+        const p = body.path?.trim();
+        if (!p) return reply.code(400).send({ error: "path is required" });
+        absPath = git.expandPath(p);
+        await git.gitInit(absPath);
+      } else {
+        const p = body.path?.trim();
+        if (!p) return reply.code(400).send({ error: "path is required" });
+        absPath = git.expandPath(p);
+        if (!(await git.isDirectory(absPath)))
+          return reply
+            .code(400)
+            .send({ error: `Path does not exist or is not a directory: ${absPath}` });
+      }
+
+      const repo: Repo = { id: uniqueRepoId(slugify(name)), name, path: absPath };
+      dbm.addRepo(repo);
+      emitGlobal({ type: "repos_changed" });
+      const isGit = await git.isGitRepo(absPath);
+      return { repo, isGit };
+    } catch (err) {
+      return reply.code(400).send({ error: errMsg(err) });
+    }
+  });
+
+  // Unregister a repo (files on disk are left untouched).
+  app.delete<{ Params: { id: string } }>("/api/repos/:id", async (req, reply) => {
+    const repo = dbm.getRepo(req.params.id);
+    if (!repo) return reply.code(404).send({ error: "Unknown repo" });
+    dbm.deleteRepo(repo.id);
+    emitGlobal({ type: "repos_changed" });
+    return { ok: true };
+  });
 
   app.get("/api/settings", async () => dbm.getSettings());
 

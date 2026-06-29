@@ -1,7 +1,14 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { homedir } from "node:os";
 import { resolve, relative, join, sep, isAbsolute } from "node:path";
-import { readdir, readFile as fsReadFile, stat, unlink } from "node:fs/promises";
+import {
+  readdir,
+  readFile as fsReadFile,
+  stat,
+  unlink,
+  mkdir,
+} from "node:fs/promises";
 
 const exec = promisify(execFile);
 
@@ -214,6 +221,61 @@ function relPosix(root: string, abs: string): string {
 export async function changedFiles(root: string): Promise<string[]> {
   const entries = await status(root);
   return entries.map((e) => e.path);
+}
+
+// ---- Adding repos --------------------------------------------------------
+
+// Expand a leading "~" to the owner's home directory and resolve to absolute.
+export function expandPath(p: string): string {
+  let out = p.trim();
+  if (out === "~") out = homedir();
+  else if (out.startsWith("~/")) out = join(homedir(), out.slice(2));
+  return resolve(out);
+}
+
+export async function pathExists(p: string): Promise<boolean> {
+  try {
+    await stat(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function isDirectory(p: string): Promise<boolean> {
+  try {
+    return (await stat(p)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function isEmptyDir(p: string): Promise<boolean> {
+  try {
+    const entries = await readdir(p);
+    return entries.filter((e) => e !== ".git").length === 0;
+  } catch {
+    return true; // doesn't exist yet → treat as empty
+  }
+}
+
+// Create a new directory (if needed) and `git init` it.
+export async function gitInit(absPath: string): Promise<void> {
+  await mkdir(absPath, { recursive: true });
+  if (!(await isGitRepo(absPath))) {
+    await git(absPath, ["init"]);
+  }
+}
+
+// Clone a remote repo into absPath. The destination must not already exist or
+// must be empty. The parent directory is created if missing.
+export async function gitClone(url: string, absPath: string): Promise<void> {
+  if ((await pathExists(absPath)) && !(await isEmptyDir(absPath))) {
+    throw new Error(`Destination already exists and is not empty: ${absPath}`);
+  }
+  const parent = resolve(absPath, "..");
+  await mkdir(parent, { recursive: true });
+  await git(parent, ["clone", "--", url, absPath]);
 }
 
 export { join, isAbsolute };

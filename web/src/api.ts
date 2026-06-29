@@ -1,6 +1,7 @@
 // REST client for the Bridge backend. Same-origin.
 
 import type {
+  AddRepoRequest,
   DiffResult,
   FileContent,
   FileListing,
@@ -54,6 +55,15 @@ export const api = {
   health: () => request<{ ok: true }>("/api/health"),
 
   getRepos: () => request<{ repos: Repo[] }>("/api/repos"),
+  addRepo: (req: AddRepoRequest) =>
+    request<{ repo: Repo; isGit: boolean }>("/api/repos", {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
+  deleteRepo: (id: string) =>
+    request<{ ok: true }>(`/api/repos/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
 
   getSettings: () => request<Settings>("/api/settings"),
   putSettings: (patch: Partial<Settings>) =>

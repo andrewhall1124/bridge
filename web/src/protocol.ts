@@ -199,7 +199,17 @@ export type ServerEvent =
 // Global events on the same socket
 export type GlobalEvent =
   | { type: "sessions_changed" }
-  | { type: "jobs_changed" };
+  | { type: "jobs_changed" }
+  | { type: "repos_changed" };
+
+export type AddRepoMode = "existing" | "init" | "clone";
+
+export interface AddRepoRequest {
+  mode: AddRepoMode;
+  name: string;
+  path?: string;
+  url?: string;
+}
 
 export type AnyServerEvent = ServerEvent | GlobalEvent;
 

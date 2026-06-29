@@ -121,6 +121,12 @@ directory with `REPOS_DIR=/srv/repos` (each subdirectory becomes a repo). Drop a
 `CLAUDE.md` at each repo root for project-specific context — the engine picks it up
 automatically.
 
+You can also **add repos from the UI** (the "+ Add" button in the sidebar's Repos
+section), in three modes: register an **existing** directory on the VPS, create a **new**
+one (`git init`), or **clone** a remote repo (`git clone <url>` into a destination path).
+UI-added repos persist in the database; removing a repo only unregisters it (files on disk
+are kept). Config-defined repos are re-synced on every boot.
+
 ### 3. Bind to Tailscale only
 
 Set `bindAddress` to the VPS's **tailnet IP** (`100.x.y.z`) or its MagicDNS hostname —

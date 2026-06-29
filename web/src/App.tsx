@@ -4,6 +4,7 @@ import { ws } from "./ws";
 import { useConnState, useSessionStream } from "./hooks";
 import type { AnyServerEvent, PermissionMode, Repo, SessionMeta } from "./protocol";
 import { Sidebar } from "./components/Sidebar";
+import { AddRepoModal } from "./components/AddRepoModal";
 import { ChatPane } from "./components/ChatPane";
 import { Activity } from "./components/Activity";
 import { CodePane } from "./components/CodePane";
@@ -44,6 +45,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>("chat");
   const [creating, setCreating] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [addRepoOpen, setAddRepoOpen] = useState(false);
 
   const conn = useConnState();
   const wide = useMediaQuery("(min-width: 900px)");
@@ -62,29 +64,60 @@ export function App() {
     }
   }, []);
 
+  const loadRepos = useCallback(async () => {
+    try {
+      const res = await api.getRepos();
+      setRepos(res.repos);
+      setSelectedRepoId((cur) => cur ?? res.repos[0]?.id ?? null);
+    } catch (err) {
+      console.error("load repos", err);
+    }
+  }, []);
+
   useEffect(() => {
     ws.start();
-    api
-      .getRepos()
-      .then((res) => {
-        setRepos(res.repos);
-        setSelectedRepoId((cur) => cur ?? res.repos[0]?.id ?? null);
-      })
-      .catch((err) => console.error("load repos", err));
+    void loadRepos();
     void loadSessions();
-  }, [loadSessions]);
+  }, [loadRepos, loadSessions]);
 
   useEffect(() => {
     const off = ws.onEvent((ev: AnyServerEvent) => {
       if (ev.type === "sessions_changed") void loadSessions();
+      else if (ev.type === "repos_changed") void loadRepos();
     });
     return off;
-  }, [loadSessions]);
+  }, [loadSessions, loadRepos]);
 
   function selectRepo(id: string) {
     setSelectedRepoId(id);
     setSelectedSessionId(null);
     setSidebarOpen(false);
+  }
+
+  function onRepoAdded(repo: Repo) {
+    void loadRepos();
+    setSelectedRepoId(repo.id);
+    setSelectedSessionId(null);
+  }
+
+  async function removeRepo(id: string) {
+    const repo = repos.find((r) => r.id === id);
+    if (
+      !window.confirm(
+        `Remove "${repo?.name || "this repo"}" from Bridge? Files on disk are kept; this only unregisters it.`,
+      )
+    )
+      return;
+    try {
+      await api.deleteRepo(id);
+      if (selectedRepoId === id) {
+        setSelectedRepoId(null);
+        setSelectedSessionId(null);
+      }
+      await loadRepos();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
   }
 
   function selectSession(id: string) {
@@ -230,6 +263,8 @@ export function App() {
             onNewSession={newSession}
             onRenameSession={renameSession}
             onDeleteSession={deleteSession}
+            onAddRepo={() => setAddRepoOpen(true)}
+            onRemoveRepo={removeRepo}
             creating={creating}
           />
         </div>
@@ -263,6 +298,10 @@ export function App() {
             </button>
           ))}
         </nav>
+      )}
+
+      {addRepoOpen && (
+        <AddRepoModal onClose={() => setAddRepoOpen(false)} onAdded={onRepoAdded} />
       )}
     </div>
   );

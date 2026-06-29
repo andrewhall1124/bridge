@@ -10,6 +10,8 @@ interface Props {
   onNewSession: () => void;
   onRenameSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  onAddRepo: () => void;
+  onRemoveRepo: (id: string) => void;
   creating: boolean;
 }
 
@@ -23,6 +25,8 @@ export function Sidebar({
   onNewSession,
   onRenameSession,
   onDeleteSession,
+  onAddRepo,
+  onRemoveRepo,
   creating,
 }: Props) {
   const repoSessions = sessions.filter((s) => s.repoId === selectedRepoId);
@@ -30,21 +34,39 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-section">
-        <div className="sidebar-title">Repos</div>
+        <div className="sidebar-title">
+          <span>Repos</span>
+          <button className="btn btn-xs btn-primary" onClick={onAddRepo}>
+            + Add
+          </button>
+        </div>
         {repos.length === 0 && (
-          <div className="empty-state subtle">No repos configured.</div>
+          <div className="empty-state subtle">
+            No repos yet. Use “+ Add” to add a new or existing git repo.
+          </div>
         )}
         <ul className="repo-list">
           {repos.map((r) => (
-            <li key={r.id}>
+            <li key={r.id} className="session-row">
               <button
                 className={`repo-item ${
                   r.id === selectedRepoId ? "selected" : ""
                 }`}
                 onClick={() => onSelectRepo(r.id)}
+                title={r.path}
               >
-                {r.name}
+                <span className="session-title">{r.name}</span>
               </button>
+              <div className="session-actions">
+                <button
+                  className="icon-btn icon-btn-sm danger"
+                  title="Remove repo (keeps files on disk)"
+                  aria-label="Remove repo"
+                  onClick={() => onRemoveRepo(r.id)}
+                >
+                  ✕
+                </button>
+              </div>
             </li>
           ))}
         </ul>

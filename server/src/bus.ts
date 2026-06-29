@@ -10,7 +10,8 @@ export type GlobalListener = (event: GlobalEvent) => void;
 
 export type GlobalEvent =
   | { type: "sessions_changed" }
-  | { type: "jobs_changed" };
+  | { type: "jobs_changed" }
+  | { type: "repos_changed" };
 
 const sessionListeners = new Map<string, Set<SessionListener>>();
 const globalListeners = new Set<GlobalListener>();

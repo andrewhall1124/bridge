@@ -106,6 +106,20 @@ export function getRepo(id: string): Repo | undefined {
     | undefined;
 }
 
+export function addRepo(repo: Repo): void {
+  db.prepare(
+    `INSERT INTO repos (id, name, path) VALUES (@id, @name, @path)
+     ON CONFLICT(id) DO UPDATE SET name = excluded.name, path = excluded.path`,
+  ).run(repo);
+}
+
+// Unregister a repo from the picker. Files on disk are left untouched. Sessions
+// that referenced it remain in the DB but are hidden (the sidebar filters by
+// repo); a config-defined repo will reappear on next boot via syncRepos.
+export function deleteRepo(id: string): void {
+  db.prepare(`DELETE FROM repos WHERE id = ?`).run(id);
+}
+
 // ---- Settings ------------------------------------------------------------
 export function getSetting(key: string): string | undefined {
   const row = db.prepare(`SELECT value FROM settings WHERE key = ?`).get(key) as
