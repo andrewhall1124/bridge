@@ -194,6 +194,13 @@ Environment=NODE_ENV=production
 WantedBy=multi-user.target
 ```
 
+### Deploy to a VPS (with CI/CD)
+
+For a full Hetzner + Tailscale + systemd setup and **push-to-`main` → live**
+continuous deployment over the tailnet, see **[docs/DEPLOY.md](./docs/DEPLOY.md)**.
+The pieces live in `deploy/` (`bridge.service`, `deploy.sh`) and
+`.github/workflows/deploy.yml`.
+
 ---
 
 ## Configuration reference

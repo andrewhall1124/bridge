@@ -1,0 +1,22 @@
+[Unit]
+Description=Bridge (Claude Code wrapper)
+# Wait for the network and Tailscale, since the app binds to the tailnet IP.
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust to wherever you cloned the repo.
+WorkingDirectory=/srv/claude-bridge
+# start:server runs the already-built server (tsx src/index.ts) WITHOUT rebuilding
+# the web client — the build happens in deploy/deploy.sh, not on every (re)start.
+# Config is read from .env in WorkingDirectory (loaded via dotenv) and/or config.json.
+ExecStart=/usr/bin/npm run start:server
+Restart=on-failure
+RestartSec=2
+# Run as a dedicated, unprivileged user that owns the repo and ran `claude login`.
+User=bridge
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

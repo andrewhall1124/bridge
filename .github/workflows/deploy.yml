@@ -1,0 +1,41 @@
+name: Deploy
+
+# Push-to-deploy: every push to main rolls out to the VPS over Tailscale.
+# Also runnable manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys at once; let an in-flight one finish.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Checked out only so we can pipe the latest deploy/deploy.sh to the box.
+      - uses: actions/checkout@v4
+
+      # Join the tailnet as an ephemeral node so the runner can reach the VPS,
+      # which is not exposed on the public internet.
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci-cd
+
+      - name: Deploy over SSH
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}   # VPS tailnet IP or MagicDNS name
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}   # service user (e.g. bridge)
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }} # private key whose pubkey is in the box's authorized_keys
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' < deploy/deploy.sh
