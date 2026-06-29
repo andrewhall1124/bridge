@@ -38,6 +38,11 @@ write_files:
       su - bridge -c "git clone $REPO_URL $APP_DIR"
       su - bridge -c "cd $APP_DIR && npm ci && npm run build"
 
+      # The Agent SDK bundles the Claude Code binary but doesn't put it on PATH;
+      # symlink it so `claude login` works (arch-agnostic: linux-x64 or -arm64).
+      CLAUDE_BIN="$(find "$APP_DIR/node_modules/@anthropic-ai" -maxdepth 2 -name claude -type f | head -1)"
+      [ -n "$CLAUDE_BIN" ] && ln -sf "$CLAUDE_BIN" /usr/local/bin/claude
+
       # --- .env: bind ONLY to the tailnet IP ---
       cat > "$APP_DIR/.env" <<ENV
       PORT=8787
@@ -77,7 +82,7 @@ write_files:
       echo " Bridge bootstrap complete. Tailnet IP: $TS_IP"
       echo " Remaining manual step (subscription billing):"
       echo "   ssh bridge@$TS_IP   # over Tailscale"
-      echo "   cd /srv/claude-bridge && npx claude login"
+      echo "   claude login"
       echo "   sudo systemctl start bridge"
       echo "=================================================================="
 

@@ -41,7 +41,7 @@ Then, over Tailscale:
 
 ```bash
 ssh bridge@bridge.<your-tailnet>.ts.net
-cd /srv/claude-bridge && npx claude login && sudo systemctl start bridge
+claude login && sudo systemctl start bridge
 ```
 
 Overridable via env: `SERVER_NAME`, `SERVER_TYPE`, `IMAGE`, `LOCATION`, `REPO_URL`,
@@ -106,10 +106,13 @@ npm ci
 ```
 
 **Authenticate Claude as the `bridge` user** (subscription billing — do NOT set
-`ANTHROPIC_API_KEY`):
+`ANTHROPIC_API_KEY`). The Agent SDK bundles the Claude Code binary but doesn't put it on
+PATH, so symlink it first:
 
 ```bash
-npx claude login
+ln -sf "$(find /srv/claude-bridge/node_modules/@anthropic-ai -maxdepth 2 -name claude -type f | head -1)" \
+  /usr/local/bin/claude    # run with sudo; the fast path does this automatically
+claude login
 ```
 
 Create `.env` (binds to the tailnet IP):
@@ -221,7 +224,7 @@ Watch progress in the Actions tab; confirm on the box with `journalctl -u bridge
   deletes it from the agent env when no key is configured.
 - **`claude login` expiry:** credentials live in the `bridge` user's home and persist
   across deploys (deploys only touch the repo). If sessions start failing auth, re-run
-  `npx claude login` as `bridge`.
+  `claude login` as `bridge`.
 - **Restart fails in CI with a sudo password prompt:** the sudoers drop-in (§6) is missing
   or the path doesn't match (`which systemctl` — adjust if not `/usr/bin/systemctl`).
 - **`npm ci` fails compiling `better-sqlite3`:** `build-essential` / `python3` missing.

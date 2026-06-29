@@ -77,10 +77,12 @@ npm install
 ### 1. Authenticate Claude (subscription billing)
 
 Run the Claude Code login flow **once, as the user the server runs as**, so subscription
-credentials are stored on the box:
+credentials are stored on the box. The Agent SDK bundles the Claude Code binary but
+doesn't put it on PATH, so point at it directly (or symlink it):
 
 ```bash
-npx claude login    # or: claude login  (the Agent SDK bundles the binary)
+# the bundled binary lives under the installed SDK's platform package:
+"$(find node_modules/@anthropic-ai -maxdepth 2 -name claude -type f | head -1)" login
 ```
 
 The Agent SDK then authenticates through those stored credentials.
