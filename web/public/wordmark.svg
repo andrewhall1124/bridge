@@ -1,9 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 64" width="232" height="64" role="img" aria-label="bridge">
   <rect width="64" height="64" rx="14" fill="#141414"/>
-  <g fill="none" stroke="#ff8c42" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17 21 L31 32 L17 43"/>
-    <line x1="36" y1="43" x2="47" y2="43"/>
-  </g>
+  <path d="M12 40 L52 40 L36 52 Z" fill="#ff8c42"/>
+  <path d="M34 11 L47 37 L34 37 Z" fill="#ff8c42"/>
+  <path d="M30 15 L19 37 L30 37 Z" fill="#ff8c42"/>
   <text x="82" y="43" font-family="Menlo, 'SF Mono', ui-monospace, monospace"
         font-size="34" font-weight="600" letter-spacing="-1" fill="#ededed">bridge</text>
 </svg>

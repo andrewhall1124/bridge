@@ -4,7 +4,7 @@
 // - Network-first for navigations, falling back to cached index.html offline.
 // - NEVER touch /api or /ws requests (the app is online-only for data).
 
-const CACHE = "bridge-shell-v2";
+const CACHE = "bridge-shell-v3";
 
 const PRECACHE = [
   "/",
