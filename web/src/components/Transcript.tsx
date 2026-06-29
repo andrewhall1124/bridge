@@ -202,7 +202,10 @@ function clip(s: string, n = 90): string {
 
 function ToolView({ node }: { node: ToolNode }) {
   const [open, setOpen] = useState(false);
-  const status = !node.done ? "running" : node.isError ? "error" : "done";
+  // AskUserQuestion answers travel back through the is_error channel, so don't
+  // treat them as errors — an answered question is a success.
+  const errored = node.isError && !node.isAnswer;
+  const status = !node.done ? "running" : errored ? "error" : "done";
   const statusIcon =
     status === "running" ? (
       <span className="spinner" aria-label="running" />
@@ -212,24 +215,29 @@ function ToolView({ node }: { node: ToolNode }) {
       <span className="tool-status-icon done">✓</span>
     );
 
+  const displayName = node.isAnswer ? "Question" : node.name;
   const summary = node.isAnswer
     ? node.done && node.result
       ? clip(answerText(node.result), 70)
       : "waiting for your answer"
     : clip(toolSummary(node.name, node.input));
 
+  // For answered questions the input is the (huge) questions blob, which is
+  // redundant with the answer — show only the answer.
+  const showInput = !node.isAnswer && Object.keys(node.input).length > 0;
+
   return (
     <div className={`tool-node ${status}`}>
       <button className="tool-node-head" onClick={() => setOpen((o) => !o)}>
         <span className="tool-node-icon">{toolIcon(node.name)}</span>
-        <span className="tool-node-name">{node.name}</span>
+        <span className="tool-node-name">{displayName}</span>
         <span className="tool-node-summary">{summary}</span>
         {statusIcon}
         <span className="tool-toggle">{open ? "▾" : "▸"}</span>
       </button>
       {open && (
         <div className="tool-node-body">
-          {Object.keys(node.input).length > 0 && (
+          {showInput && (
             <div className="tool-node-section">
               <div className="tool-node-label">input</div>
               <pre className="tool-node-pre">{JSON.stringify(node.input, null, 2)}</pre>
@@ -238,9 +246,9 @@ function ToolView({ node }: { node: ToolNode }) {
           {node.done && node.result != null && (
             <div className="tool-node-section">
               <div className="tool-node-label">
-                {node.isAnswer ? "your answer" : node.isError ? "error" : "output"}
+                {node.isAnswer ? "your answer" : errored ? "error" : "output"}
               </div>
-              <pre className={`tool-node-pre ${node.isError ? "is-error" : ""}`}>
+              <pre className={`tool-node-pre ${errored ? "is-error" : ""}`}>
                 {node.isAnswer ? answerText(node.result) : node.result}
               </pre>
             </div>
