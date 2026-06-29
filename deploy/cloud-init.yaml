@@ -26,7 +26,9 @@ write_files:
 
       # --- Tailscale (the security boundary) ---
       curl -fsSL https://tailscale.com/install.sh | sh
-      tailscale up --authkey='__TS_AUTHKEY__' --hostname=bridge --ssh
+      # No --ssh: let OpenSSH (with keys below) handle port 22 over the tailnet.
+      # Tailscale SSH would intercept :22 and reject CI unless granted via ACL ssh rules.
+      tailscale up --authkey='__TS_AUTHKEY__' --hostname=bridge
       TS_IP="$(tailscale ip -4 | head -1)"
 
       # --- Service user (home separate from the repo so ~/.claude creds persist) ---
@@ -54,13 +56,14 @@ write_files:
       ENV
       chown bridge:bridge "$APP_DIR/.env"
 
-      # --- Deploy key for CI (so push-to-main works immediately), if provided ---
+      # --- SSH keys for the bridge user (OpenSSH auth over the tailnet) ---
       install -d -o bridge -g bridge -m 700 /home/bridge/.ssh
-      if [ -n "__DEPLOY_PUBKEY__" ]; then
-        echo "__DEPLOY_PUBKEY__" >> /home/bridge/.ssh/authorized_keys
-        chown bridge:bridge /home/bridge/.ssh/authorized_keys
-        chmod 600 /home/bridge/.ssh/authorized_keys
-      fi
+      # Your admin key (Hetzner injects it for root) → keyless `ssh bridge@box` for you.
+      [ -s /root/.ssh/authorized_keys ] && cat /root/.ssh/authorized_keys >> /home/bridge/.ssh/authorized_keys
+      # The CI deploy key (if provided) → push-to-main works immediately.
+      [ -n "__DEPLOY_PUBKEY__" ] && echo "__DEPLOY_PUBKEY__" >> /home/bridge/.ssh/authorized_keys
+      chown bridge:bridge /home/bridge/.ssh/authorized_keys
+      chmod 600 /home/bridge/.ssh/authorized_keys
 
       # --- systemd unit + sudoers (single source of truth = repo files) ---
       cp "$APP_DIR/deploy/bridge.service" /etc/systemd/system/bridge.service
