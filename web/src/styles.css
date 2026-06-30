@@ -754,6 +754,13 @@ select:focus {
   word-break: break-word;
   max-height: 220px;
 }
+.approval-plan {
+  padding: 10px;
+  background: var(--bg);
+  border-radius: 2px;
+  overflow-y: auto;
+  max-height: 360px;
+}
 .approval-actions {
   display: flex;
   gap: 8px;

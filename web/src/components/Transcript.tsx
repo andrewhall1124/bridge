@@ -155,6 +155,8 @@ function toolSummary(name: string, input: Record<string, unknown>): string {
       return str(input.description) || str(input.prompt).slice(0, 80);
     case "AskUserQuestion":
       return "question";
+    case "ExitPlanMode":
+      return str(input.plan) || "plan ready for review";
     default: {
       const firstStr = Object.values(input).find((v) => typeof v === "string");
       return typeof firstStr === "string" ? firstStr.slice(0, 80) : "";
@@ -195,16 +197,22 @@ function ToolView({ node }: { node: ToolNode }) {
       <span className="tool-status-icon done">✓</span>
     );
 
-  const displayName = node.isAnswer ? "Question" : node.name;
+  // ExitPlanMode carries a markdown plan in `input.plan`; render it as prose
+  // rather than a JSON blob.
+  const isPlan = node.name === "ExitPlanMode";
+
+  const displayName = node.isAnswer ? "Question" : isPlan ? "Plan" : node.name;
   const summary = node.isAnswer
     ? node.done && node.result
       ? clip(answerText(node.result), 70)
       : "waiting for your answer"
-    : clip(toolSummary(node.name, node.input));
+    : isPlan
+      ? clip(str(node.input.plan) || "plan ready for review", 70)
+      : clip(toolSummary(node.name, node.input));
 
   // For answered questions the input is the (huge) questions blob, which is
   // redundant with the answer — show only the answer.
-  const showInput = !node.isAnswer && Object.keys(node.input).length > 0;
+  const showInput = !node.isAnswer && !isPlan && Object.keys(node.input).length > 0;
 
   return (
     <div className={`tool-node ${status}`}>
@@ -216,6 +224,12 @@ function ToolView({ node }: { node: ToolNode }) {
       </button>
       {open && (
         <div className="tool-node-body">
+          {isPlan && (
+            <div className="tool-node-section">
+              <div className="tool-node-label">plan</div>
+              <Markdown text={str(node.input.plan)} />
+            </div>
+          )}
           {showInput && (
             <div className="tool-node-section">
               <div className="tool-node-label">input</div>
