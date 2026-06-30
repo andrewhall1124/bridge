@@ -70,6 +70,7 @@ export function App() {
   const conn = useConnState();
   const wide = useMediaQuery("(min-width: 900px)");
   const stream = useSessionStream(selectedSessionId);
+  const [dbg, setDbg] = useState("");
 
   // The app shell is pinned to the full screen (`.app` uses `inset: 0`). When the
   // on-screen keyboard opens, iOS leaves the layout viewport (and `window.innerHeight`)
@@ -81,18 +82,17 @@ export function App() {
     const vv = window.visualViewport;
     if (!vv) return;
     const root = document.documentElement;
-    // The keyboard's height is the amount the VisualViewport has shrunk below its
-    // resting (keyboard-closed) height. `window.innerHeight` is unreliable here —
-    // iOS reports it toolbar-hidden, larger than the actual fixed viewport, which
-    // would fake a ~200px keyboard at rest. Track the largest height seen instead;
-    // the viewport only drops below it when the keyboard (or similar) appears.
-    let baseline = vv.height;
+    // DIAGNOSTIC BUILD: pin the shell to the full fixed viewport (--kb = 0) and
+    // surface the raw viewport metrics on screen so we can see why the footer
+    // doesn't reach the bottom on this device. Remove once diagnosed.
     const update = () => {
-      if (vv.height > baseline) baseline = vv.height;
-      const kb = Math.max(0, baseline - vv.height);
-      root.style.setProperty("--kb", `${kb}px`);
-      // iOS may have scrolled the layout viewport to reveal the focused input;
-      // undo it so the pinned shell stays aligned with the visible area.
+      root.style.setProperty("--kb", "0px");
+      const de = document.documentElement;
+      setDbg(
+        `iH ${window.innerHeight} | vvH ${Math.round(vv.height)} | vvT ${Math.round(
+          vv.offsetTop,
+        )} | scr ${window.screen.height} | clH ${de.clientHeight} | dpr ${window.devicePixelRatio}`,
+      );
       if (window.scrollY !== 0) window.scrollTo(0, 0);
     };
     update();
@@ -282,6 +282,23 @@ export function App() {
 
   return (
     <div className="app">
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          background: "rgba(255,140,66,0.92)",
+          color: "#000",
+          font: "10px/1.3 monospace",
+          padding: "2px 4px",
+          textAlign: "center",
+          pointerEvents: "none",
+        }}
+      >
+        {dbg}
+      </div>
       <header className="topbar">
         {!wide && (
           <button
