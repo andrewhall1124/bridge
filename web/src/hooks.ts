@@ -125,31 +125,41 @@ export function useSessionStream(sessionId: string | null): SessionStream {
           });
           break;
         case "approval_request":
-          setState((p) => ({
-            ...p,
-            approvals: [
-              ...p.approvals,
-              {
-                requestId: ev.requestId,
-                toolName: ev.toolName,
-                toolUseId: ev.toolUseId,
-                input: ev.input,
-              },
-            ],
-          }));
+          setState((p) =>
+            // Ignore replays of a request we're already showing (e.g. a WS
+            // reconnect re-subscribes and the server replays pending requests).
+            p.approvals.some((a) => a.requestId === ev.requestId)
+              ? p
+              : {
+                  ...p,
+                  approvals: [
+                    ...p.approvals,
+                    {
+                      requestId: ev.requestId,
+                      toolName: ev.toolName,
+                      toolUseId: ev.toolUseId,
+                      input: ev.input,
+                    },
+                  ],
+                },
+          );
           break;
         case "question_request":
-          setState((p) => ({
-            ...p,
-            questions: [
-              ...p.questions,
-              {
-                requestId: ev.requestId,
-                toolUseId: ev.toolUseId,
-                questions: ev.questions,
-              },
-            ],
-          }));
+          setState((p) =>
+            p.questions.some((q) => q.requestId === ev.requestId)
+              ? p
+              : {
+                  ...p,
+                  questions: [
+                    ...p.questions,
+                    {
+                      requestId: ev.requestId,
+                      toolUseId: ev.toolUseId,
+                      questions: ev.questions,
+                    },
+                  ],
+                },
+          );
           break;
         case "approval_resolved":
           setState((p) => ({

@@ -13,7 +13,12 @@ import { readUserMcpServers } from "../userClaude.js";
 import { log } from "../logger.js";
 import { emitSession } from "../bus.js";
 import * as dbm from "../db.js";
-import type { PermissionMode, QuestionAnswer, QuestionItem } from "../protocol.js";
+import type {
+  PermissionMode,
+  QuestionAnswer,
+  QuestionItem,
+  ServerEvent,
+} from "../protocol.js";
 
 const ASK_TOOL = "AskUserQuestion";
 
@@ -75,10 +80,19 @@ function agentEnv(): Record<string, string | undefined> {
   return env;
 }
 
+// The request event we emitted to clients — kept so it can be replayed verbatim
+// when a client (re)subscribes while the request is still pending.
+type PendingRequestEvent =
+  | Extract<ServerEvent, { type: "question_request" }>
+  | Extract<ServerEvent, { type: "approval_request" }>;
+
 interface PendingApproval {
   resolve: (result: PermissionResult) => void;
   // Present when the pending request is an AskUserQuestion (vs a tool approval).
   questions?: QuestionItem[];
+  // The original request event, replayed to clients that subscribe after it was
+  // first emitted (e.g. reopening the session in a new tab).
+  request: PendingRequestEvent;
 }
 
 interface ActiveSession {
@@ -121,10 +135,29 @@ function buildCanUseTool(sessionId: string, sess: () => ActiveSession | undefine
     const isQuestion = toolName === ASK_TOOL;
     const questions = isQuestion ? parseQuestions(input) : [];
 
+    const request: PendingRequestEvent =
+      isQuestion && questions.length > 0
+        ? {
+            type: "question_request",
+            sessionId,
+            requestId,
+            toolUseId: opts.toolUseID,
+            questions,
+          }
+        : {
+            type: "approval_request",
+            sessionId,
+            requestId,
+            toolName,
+            toolUseId: opts.toolUseID,
+            input,
+          };
+
     return await new Promise<PermissionResult>((resolve) => {
       current.pending.set(requestId, {
         resolve,
         ...(isQuestion ? { questions } : {}),
+        request,
       });
 
       const onAbort = () => {
@@ -139,24 +172,7 @@ function buildCanUseTool(sessionId: string, sess: () => ActiveSession | undefine
       };
       opts.signal.addEventListener("abort", onAbort, { once: true });
 
-      if (isQuestion && questions.length > 0) {
-        emitSession(sessionId, {
-          type: "question_request",
-          sessionId,
-          requestId,
-          toolUseId: opts.toolUseID,
-          questions,
-        });
-      } else {
-        emitSession(sessionId, {
-          type: "approval_request",
-          sessionId,
-          requestId,
-          toolName,
-          toolUseId: opts.toolUseID,
-          input,
-        });
-      }
+      emitSession(sessionId, request);
     });
   };
 }
@@ -394,6 +410,15 @@ export function sendMessage(sessionId: string, text: string): void {
   dbm.setSessionStatus(sessionId, "running");
   emitSession(sessionId, { type: "status", sessionId, status: "running" });
   sess.input.push(userMessage(text));
+}
+
+// The request events still awaiting an answer, so a (re)subscribing client can
+// re-render their UI. Empty when the session has no live agent or no pending
+// requests.
+export function pendingRequests(sessionId: string): PendingRequestEvent[] {
+  const sess = active.get(sessionId);
+  if (!sess) return [];
+  return [...sess.pending.values()].map((p) => p.request);
 }
 
 export function resolveApproval(

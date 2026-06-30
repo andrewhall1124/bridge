@@ -33,6 +33,9 @@ export function attachWebSocket(server: Server): WebSocketServer {
         status: meta?.status ?? "idle",
         mode: meta?.permissionMode ?? "default",
       });
+      // Replay any request still awaiting an answer so reopening the session
+      // re-renders its approval/question UI instead of losing it.
+      for (const request of sm.pendingRequests(sessionId)) send(request);
     };
 
     const unsubscribe = (sessionId: string) => {
