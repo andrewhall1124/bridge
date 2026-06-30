@@ -4,7 +4,7 @@
 // - Network-first for navigations, falling back to cached index.html offline.
 // - NEVER touch /api or /ws requests (the app is online-only for data).
 
-const CACHE = "bridge-shell-v3";
+const CACHE = "bridge-shell-v4";
 
 const PRECACHE = [
   "/",
@@ -78,5 +78,46 @@ self.addEventListener("fetch", (event) => {
         .catch(() => cached);
       return cached || network;
     })
+  );
+});
+
+// ---- Web Push -------------------------------------------------------------
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { title: "Bridge", body: event.data ? event.data.text() : "" };
+  }
+  const title = payload.title || "Bridge";
+  const url = payload.url || "/";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: payload.body || "",
+      icon: "/icons/icon-192.svg",
+      badge: "/icons/icon-192.svg",
+      tag: payload.tag || undefined,
+      renotify: Boolean(payload.tag),
+      data: { url },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        for (const client of clients) {
+          if ("focus" in client) {
+            client.focus();
+            if ("navigate" in client) client.navigate(url);
+            return;
+          }
+        }
+        return self.clients.openWindow(url);
+      })
   );
 });

@@ -11,14 +11,32 @@ import { AsyncQueue } from "../util/asyncQueue.js";
 import { getConfig } from "../config.js";
 import { readUserMcpServers } from "../userClaude.js";
 import { log } from "../logger.js";
-import { emitSession } from "../bus.js";
+import { emitSession, emitGlobal } from "../bus.js";
 import * as dbm from "../db.js";
+import { notifySessionStatus } from "../push.js";
 import type {
   PermissionMode,
   QuestionAnswer,
   QuestionItem,
   ServerEvent,
+  SessionStatus,
 } from "../protocol.js";
+
+// Centralize status changes: persist, notify the session's subscribers, refresh
+// every client's sidebar (sessions_changed), and fire a push notification for
+// the states the owner cares about (awaiting_input / idle / error).
+function setStatus(sessionId: string, status: SessionStatus, error?: string): void {
+  dbm.setSessionStatus(sessionId, status);
+  emitSession(sessionId, {
+    type: "status",
+    sessionId,
+    status,
+    ...(error ? { error } : {}),
+  });
+  emitGlobal({ type: "sessions_changed" });
+  const meta = dbm.getSession(sessionId);
+  if (meta) notifySessionStatus(meta, status);
+}
 
 const ASK_TOOL = "AskUserQuestion";
 
@@ -172,6 +190,8 @@ function buildCanUseTool(sessionId: string, sess: () => ActiveSession | undefine
       };
       opts.signal.addEventListener("abort", onAbort, { once: true });
 
+      // The agent is now blocked waiting on the owner.
+      setStatus(sessionId, "awaiting_input");
       emitSession(sessionId, request);
     });
   };
@@ -186,13 +206,7 @@ async function consume(sessionId: string, q: Query): Promise<void> {
     }
   } catch (err) {
     log.error(`Session ${sessionId} stream error:`, err);
-    dbm.setSessionStatus(sessionId, "error");
-    emitSession(sessionId, {
-      type: "status",
-      sessionId,
-      status: "error",
-      error: err instanceof Error ? err.message : String(err),
-    });
+    setStatus(sessionId, "error", err instanceof Error ? err.message : String(err));
   } finally {
     active.delete(sessionId);
     thinkingBuffers.delete(sessionId);
@@ -261,8 +275,7 @@ function handleMessage(sessionId: string, message: SDKMessage): void {
   switch (m.type) {
     case "system": {
       // init/system notices — mark running.
-      dbm.setSessionStatus(sessionId, "running");
-      emitSession(sessionId, { type: "status", sessionId, status: "running" });
+      setStatus(sessionId, "running");
       return;
     }
     case "stream_event": {
@@ -328,8 +341,7 @@ function handleMessage(sessionId: string, message: SDKMessage): void {
       };
       const item = dbm.appendMessage(sessionId, "system", "result", result);
       emitSession(sessionId, { type: "message", sessionId, item });
-      dbm.setSessionStatus(sessionId, "idle");
-      emitSession(sessionId, { type: "status", sessionId, status: "idle" });
+      setStatus(sessionId, "idle");
       emitSession(sessionId, { type: "done", sessionId, result });
       return;
     }
@@ -407,8 +419,7 @@ export function sendMessage(sessionId: string, text: string): void {
   const sess = ensureSession(sessionId);
   const item = dbm.appendMessage(sessionId, "user", "user_text", { text });
   emitSession(sessionId, { type: "message", sessionId, item });
-  dbm.setSessionStatus(sessionId, "running");
-  emitSession(sessionId, { type: "status", sessionId, status: "running" });
+  setStatus(sessionId, "running");
   sess.input.push(userMessage(text));
 }
 
@@ -441,6 +452,8 @@ export function resolveApproval(
     });
   }
   emitSession(sessionId, { type: "approval_resolved", sessionId, requestId });
+  // Once nothing is pending the agent is working again.
+  if (sess.pending.size === 0) setStatus(sessionId, "running");
 }
 
 export function resolveQuestion(
@@ -467,6 +480,8 @@ export function resolveQuestion(
     });
   }
   emitSession(sessionId, { type: "approval_resolved", sessionId, requestId });
+  // Once nothing is pending the agent is working again.
+  if (sess.pending.size === 0) setStatus(sessionId, "running");
 }
 
 export async function interrupt(sessionId: string): Promise<void> {

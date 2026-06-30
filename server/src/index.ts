@@ -1,6 +1,7 @@
 import { getConfig } from "./config.js";
 import { log } from "./logger.js";
 import { initDb } from "./db.js";
+import { initPush } from "./push.js";
 import { buildServer } from "./http/server.js";
 import { attachWebSocket } from "./ws/hub.js";
 import { closeAll } from "./agent/sessionManager.js";
@@ -8,6 +9,7 @@ import { closeAll } from "./agent/sessionManager.js";
 async function main(): Promise<void> {
   const config = getConfig();
   initDb();
+  initPush();
 
   const app = await buildServer();
   const wss = attachWebSocket(app.server);

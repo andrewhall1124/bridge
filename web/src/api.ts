@@ -113,6 +113,19 @@ export const api = {
   signOutGitHub: () =>
     request<{ ok: true }>("/api/github/signout", { method: "POST", body: "{}" }),
 
+  getVapidPublicKey: () =>
+    request<{ publicKey: string | null }>("/api/push/vapid"),
+  subscribePush: (sub: PushSubscriptionJSON) =>
+    request<{ ok: true }>("/api/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify(sub),
+    }),
+  unsubscribePush: (endpoint: string) =>
+    request<{ ok: true }>("/api/push/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint }),
+    }),
+
   getSessions: () => request<{ sessions: SessionMeta[] }>("/api/sessions"),
   createSession: (repoId: string, title?: string) =>
     request<{ session: SessionMeta }>("/api/sessions", {

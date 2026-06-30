@@ -10,7 +10,7 @@ export interface Repo {
   railwayProjectId?: string | null;
 }
 
-export type SessionStatus = "idle" | "running" | "error";
+export type SessionStatus = "idle" | "running" | "awaiting_input" | "error";
 
 export interface SessionMeta {
   id: string;

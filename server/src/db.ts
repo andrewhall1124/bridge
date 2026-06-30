@@ -53,6 +53,12 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  endpoint   TEXT PRIMARY KEY,
+  data_json  TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 `);
 
 // Migration: per-session permission mode (added after initial release).
@@ -156,6 +162,30 @@ export function setSetting(key: string, value: string): void {
 
 export function deleteSetting(key: string): void {
   db.prepare(`DELETE FROM settings WHERE key = ?`).run(key);
+}
+
+// ---- Push subscriptions --------------------------------------------------
+export interface StoredPushSubscription {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export function addPushSubscription(sub: StoredPushSubscription): void {
+  db.prepare(
+    `INSERT INTO push_subscriptions (endpoint, data_json, created_at) VALUES (?, ?, ?)
+     ON CONFLICT(endpoint) DO UPDATE SET data_json = excluded.data_json`,
+  ).run(sub.endpoint, JSON.stringify(sub), now());
+}
+
+export function listPushSubscriptions(): StoredPushSubscription[] {
+  const rows = db
+    .prepare(`SELECT data_json FROM push_subscriptions`)
+    .all() as { data_json: string }[];
+  return rows.map((r) => JSON.parse(r.data_json) as StoredPushSubscription);
+}
+
+export function removePushSubscription(endpoint: string): void {
+  db.prepare(`DELETE FROM push_subscriptions WHERE endpoint = ?`).run(endpoint);
 }
 
 export function getSettings(): Settings {

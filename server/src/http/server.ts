@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import { log } from "../logger.js";
 import * as dbm from "../db.js";
 import { emitGlobal } from "../bus.js";
+import { getVapidPublicKey } from "../push.js";
 import { closeSession } from "../agent/sessionManager.js";
 import * as git from "../git/repo.js";
 import * as railway from "../railway/client.js";
@@ -271,6 +272,34 @@ export async function buildServer(): Promise<FastifyInstance> {
     emitGlobal({ type: "sessions_changed" });
     return { ok: true };
   });
+
+  // Web Push notifications
+  app.get("/api/push/vapid", async () => ({ publicKey: getVapidPublicKey() }));
+
+  app.post<{ Body: dbm.StoredPushSubscription }>(
+    "/api/push/subscribe",
+    async (req, reply) => {
+      const sub = req.body;
+      if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
+        return reply.code(400).send({ error: "Invalid push subscription" });
+      }
+      dbm.addPushSubscription({
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+      });
+      return { ok: true };
+    },
+  );
+
+  app.post<{ Body: { endpoint?: string } }>(
+    "/api/push/unsubscribe",
+    async (req, reply) => {
+      const endpoint = req.body?.endpoint;
+      if (!endpoint) return reply.code(400).send({ error: "endpoint is required" });
+      dbm.removePushSubscription(endpoint);
+      return { ok: true };
+    },
+  );
 
   // Find usages (whole-word, repo-wide textual search)
   app.get<{ Params: { id: string }; Querystring: { symbol?: string } }>(

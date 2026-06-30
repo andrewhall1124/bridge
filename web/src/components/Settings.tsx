@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { GeneralSettings } from "./settings/GeneralSettings";
+import { NotificationsSettings } from "./settings/NotificationsSettings";
 import { McpSettings } from "./settings/McpSettings";
 import { ClaudeMdSettings } from "./settings/ClaudeMdSettings";
 import { HooksSettings } from "./settings/HooksSettings";
 import { RailwaySettings } from "./settings/RailwaySettings";
 import { GitHubSettings } from "./settings/GitHubSettings";
 
-type Section = "general" | "mcp" | "claudemd" | "hooks" | "railway" | "github";
+type Section =
+  | "general"
+  | "notifications"
+  | "mcp"
+  | "claudemd"
+  | "hooks"
+  | "railway"
+  | "github";
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "general", label: "General" },
+  { id: "notifications", label: "Notifications" },
   { id: "mcp", label: "MCP Servers" },
   { id: "claudemd", label: "CLAUDE.md" },
   { id: "hooks", label: "Hooks" },
@@ -37,6 +46,7 @@ export function Settings() {
       </nav>
 
       {section === "general" && <GeneralSettings />}
+      {section === "notifications" && <NotificationsSettings />}
       {section === "mcp" && <McpSettings />}
       {section === "claudemd" && <ClaudeMdSettings />}
       {section === "hooks" && <HooksSettings />}

@@ -1,4 +1,27 @@
-import type { Repo, SessionMeta } from "../protocol";
+import type { Repo, SessionMeta, SessionStatus } from "../protocol";
+
+// Aggregate a repo's status from its sessions. Attention states win:
+// awaiting_input > error > running > idle.
+function repoStatus(sessions: SessionMeta[], repoId: string): SessionStatus {
+  let best: SessionStatus = "idle";
+  const rank: Record<SessionStatus, number> = {
+    idle: 0,
+    running: 1,
+    error: 2,
+    awaiting_input: 3,
+  };
+  for (const s of sessions) {
+    if (s.repoId === repoId && rank[s.status] > rank[best]) best = s.status;
+  }
+  return best;
+}
+
+const STATUS_TITLE: Record<SessionStatus, string> = {
+  idle: "Idle",
+  running: "Running",
+  awaiting_input: "Needs input",
+  error: "Error",
+};
 
 interface Props {
   repos: Repo[];
@@ -44,7 +67,9 @@ export function Sidebar({
           </div>
         )}
         <ul className="repo-list">
-          {repos.map((r) => (
+          {repos.map((r) => {
+            const status = repoStatus(sessions, r.id);
+            return (
             <li key={r.id} className="session-row">
               <button
                 className={`repo-item ${
@@ -53,6 +78,10 @@ export function Sidebar({
                 onClick={() => onSelectRepo(r.id)}
                 title={r.path}
               >
+                <span
+                  className={`status-dot status-${status}`}
+                  title={STATUS_TITLE[status]}
+                />
                 <span className="session-title">{r.name}</span>
               </button>
               <div className="session-actions">
@@ -66,7 +95,8 @@ export function Sidebar({
                 </button>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </div>
 
@@ -96,6 +126,10 @@ export function Sidebar({
                 }`}
                 onClick={() => onSelectSession(s.id)}
               >
+                <span
+                  className={`status-dot status-${s.status}`}
+                  title={STATUS_TITLE[s.status]}
+                />
                 <span className="session-title">{s.title || "Untitled"}</span>
               </button>
               <div className="session-actions">

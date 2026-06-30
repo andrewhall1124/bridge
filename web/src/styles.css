@@ -225,6 +225,36 @@ select:focus {
   font-size: 12px;
 }
 
+/* Repo / session status indicator dots. */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex: 0 0 auto;
+}
+.status-dot.status-running {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  animation: status-pulse 1.4s ease-in-out infinite;
+}
+.status-dot.status-awaiting_input {
+  background: var(--warn);
+  box-shadow: 0 0 6px var(--warn);
+}
+.status-dot.status-error {
+  background: var(--danger);
+}
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 .body {
   flex: 1;
   display: flex;
@@ -322,6 +352,8 @@ select:focus {
   border-color: var(--accent-dim);
 }
 .session-title {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
