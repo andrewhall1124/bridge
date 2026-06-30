@@ -26,6 +26,11 @@ import type {
 // every client's sidebar (sessions_changed), and fire a push notification for
 // the states the owner cares about (awaiting_input / idle / error).
 function setStatus(sessionId: string, status: SessionStatus, error?: string): void {
+  const meta = dbm.getSession(sessionId);
+  if (!meta) return;
+  // No-op transition (the SDK re-emits "system"/running many times per turn) —
+  // skip the status event, the sidebar broadcast, and the push notification.
+  if (meta.status === status) return;
   dbm.setSessionStatus(sessionId, status);
   emitSession(sessionId, {
     type: "status",
@@ -34,8 +39,7 @@ function setStatus(sessionId: string, status: SessionStatus, error?: string): vo
     ...(error ? { error } : {}),
   });
   emitGlobal({ type: "sessions_changed" });
-  const meta = dbm.getSession(sessionId);
-  if (meta) notifySessionStatus(meta, status);
+  notifySessionStatus(meta, status);
 }
 
 const ASK_TOOL = "AskUserQuestion";
