@@ -1,12 +1,11 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { homedir } from "node:os";
-import { resolve, relative, join, sep, isAbsolute } from "node:path";
+import { resolve, join, sep, isAbsolute } from "node:path";
 import {
   readdir,
   readFile as fsReadFile,
   stat,
-  unlink,
   mkdir,
 } from "node:fs/promises";
 
@@ -101,126 +100,6 @@ export async function readFile(root: string, rel: string): Promise<FileContent> 
     truncated: buf.length > MAX_FILE_BYTES,
     binary,
   };
-}
-
-export interface StatusEntry {
-  path: string;
-  index: string; // staged status char
-  worktree: string; // unstaged status char
-  untracked: boolean;
-}
-
-export async function status(root: string): Promise<StatusEntry[]> {
-  const out = await git(root, ["status", "--porcelain=v1", "-z"]);
-  const parts = out.split("\0").filter(Boolean);
-  const entries: StatusEntry[] = [];
-  for (let i = 0; i < parts.length; i++) {
-    const token = parts[i]!;
-    const x = token[0] ?? " ";
-    const y = token[1] ?? " ";
-    let path = token.slice(3);
-    // Renames/copies record "old -> new"; porcelain -z puts the source in the
-    // next token. Consume it and keep the destination path.
-    if (x === "R" || x === "C") {
-      i++; // skip the source path token
-    }
-    entries.push({
-      path: path.replace(/\\/g, "/"),
-      index: x,
-      worktree: y,
-      untracked: x === "?" && y === "?",
-    });
-  }
-  return entries;
-}
-
-// Build a single unified diff covering tracked changes (working tree + index
-// vs HEAD) plus full additions for untracked files.
-export async function diff(root: string): Promise<{
-  unified: string;
-  staged: string;
-  untracked: string[];
-}> {
-  let tracked = "";
-  try {
-    tracked = await git(root, ["diff", "HEAD", "--"]);
-  } catch {
-    // No HEAD yet (empty repo): diff the index against the empty tree.
-    tracked = await git(root, ["diff", "--"]);
-  }
-  const staged = await git(root, ["diff", "--cached", "--"]).catch(() => "");
-
-  const entries = await status(root);
-  const untracked = entries.filter((e) => e.untracked).map((e) => e.path);
-
-  let untrackedDiff = "";
-  for (const p of untracked) {
-    try {
-      const abs = safeResolve(root, p);
-      const info = await stat(abs);
-      if (info.isDirectory() || info.size > MAX_FILE_BYTES) continue;
-      // git diff --no-index exits 1 when files differ; capture stdout anyway.
-      const { stdout } = await exec(
-        "git",
-        ["diff", "--no-index", "--", "/dev/null", p],
-        { cwd: root, maxBuffer: 32 * 1024 * 1024 },
-      ).catch((e: { stdout?: string }) => ({ stdout: e.stdout ?? "" }));
-      untrackedDiff += stdout;
-    } catch {
-      /* skip unreadable untracked files */
-    }
-  }
-
-  return { unified: tracked + untrackedDiff, staged, untracked };
-}
-
-export async function commit(
-  root: string,
-  message: string,
-  files?: string[],
-): Promise<{ hash: string }> {
-  if (files && files.length > 0) {
-    const safe = files.map((f) => safeResolve(root, f)).map((abs) => relPosix(root, abs));
-    await git(root, ["add", "--", ...safe]);
-  } else {
-    await git(root, ["add", "-A"]);
-  }
-  await git(root, ["commit", "-m", message]);
-  const hash = (await git(root, ["rev-parse", "HEAD"])).trim();
-  return { hash };
-}
-
-export async function discardFile(root: string, rel: string): Promise<void> {
-  const abs = safeResolve(root, rel);
-  const entries = await status(root);
-  const entry = entries.find((e) => e.path === rel.replace(/\\/g, "/"));
-  if (entry?.untracked) {
-    await unlink(abs).catch(() => {});
-    return;
-  }
-  const rp = relPosix(root, abs);
-  // Unstage then restore working tree to HEAD.
-  await git(root, ["restore", "--staged", "--worktree", "--", rp]).catch(async () => {
-    await git(root, ["checkout", "HEAD", "--", rp]);
-  });
-}
-
-export async function discardAll(root: string): Promise<void> {
-  await git(root, ["restore", "--staged", "--worktree", "--", "."]).catch(async () => {
-    await git(root, ["checkout", "HEAD", "--", "."]);
-  });
-  await git(root, ["clean", "-fd"]); // remove untracked files & dirs
-}
-
-function relPosix(root: string, abs: string): string {
-  const r = relative(resolve(root), abs);
-  return r.split(sep).join("/");
-}
-
-// Returns paths changed relative to HEAD.
-export async function changedFiles(root: string): Promise<string[]> {
-  const entries = await status(root);
-  return entries.map((e) => e.path);
 }
 
 // ---- Find usages (textual, whole-word) -----------------------------------

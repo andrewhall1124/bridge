@@ -169,25 +169,6 @@ export interface FileContent {
   binary: boolean;
 }
 
-export interface GitStatusEntry {
-  path: string;
-  index: string;
-  worktree: string;
-  untracked: boolean;
-}
-
-export interface DiffResult {
-  unified: string;
-  staged: string;
-  untracked: string[];
-  status: GitStatusEntry[];
-}
-
-export interface NotGitResult {
-  error: string;
-  notGit: true;
-}
-
 export interface ReferenceMatch {
   path: string;
   line: number;

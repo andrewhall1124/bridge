@@ -366,70 +366,6 @@ select:focus {
   }
 }
 
-.status-badge {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 2px;
-  background: var(--bg-3);
-  color: var(--text-dim);
-  text-transform: lowercase;
-  flex: 0 0 auto;
-}
-.status-badge.running {
-  background: var(--accent-bg);
-  color: var(--accent-2);
-}
-.status-badge.idle,
-.status-badge.queued {
-  background: var(--bg-3);
-  color: var(--text-dim);
-}
-.status-badge.done {
-  background: var(--accent-bg);
-  color: var(--ok);
-}
-.status-badge.error {
-  background: #3a1620;
-  color: var(--danger);
-}
-
-/* ---------- chat mode bar & permission-mode badge ---------- */
-.chat-modebar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-1);
-}
-.mode-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 2px;
-  background: var(--bg-3);
-  color: var(--text-dim);
-  flex: 0 0 auto;
-  letter-spacing: 0.02em;
-}
-.mode-badge.mode-plan {
-  background: var(--bg-3);
-  color: var(--text-dim);
-}
-.mode-badge.mode-default {
-  background: var(--bg-3);
-  color: var(--text);
-}
-.mode-badge.mode-acceptEdits {
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-.mode-badge.mode-bypassPermissions {
-  background: #2a1418;
-  color: var(--danger);
-  border: 1px solid var(--danger);
-}
-
 /* segmented permission-mode selector — risk gradient, color-coded */
 .mode-seg {
   display: inline-flex;
@@ -928,29 +864,9 @@ select:focus {
   gap: 8px;
 }
 
-/* ---------- code / files / diff ---------- */
+/* ---------- code / files ---------- */
 .code-pane {
   height: 100%;
-}
-.subtabs {
-  display: flex;
-  gap: 2px;
-  padding: 8px;
-  border-bottom: 1px solid var(--border);
-  flex: 0 0 auto;
-}
-.subtab {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-dim);
-  padding: 6px 14px;
-  border-radius: 2px;
-  cursor: pointer;
-}
-.subtab.active {
-  background: var(--bg-2);
-  color: var(--text);
-  border-color: var(--border);
 }
 .code-body {
   flex: 1;
@@ -1181,61 +1097,6 @@ select:focus {
   width: 1.9em;
   text-align: center;
   flex: 0 0 auto;
-}
-
-.diff-view {
-  padding: 12px;
-}
-.diff-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.status-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--bg-1);
-}
-.status-flags {
-  font-family: ui-monospace, monospace;
-  color: var(--warn);
-  flex: 0 0 auto;
-  white-space: pre;
-}
-.status-path {
-  flex: 1;
-  font-family: ui-monospace, monospace;
-  font-size: 12.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.untracked ul {
-  margin: 4px 0;
-  padding-left: 20px;
-  font-family: ui-monospace, monospace;
-  font-size: 12.5px;
-}
-.commit-box {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  align-items: center;
-}
-.diff2html-wrap {
-  margin-top: 8px;
-  font-size: 12.5px;
-  overflow-x: auto;
 }
 
 /* ---------- settings ---------- */

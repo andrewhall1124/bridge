@@ -97,7 +97,6 @@ export function Sidebar({
                 onClick={() => onSelectSession(s.id)}
               >
                 <span className="session-title">{s.title || "Untitled"}</span>
-                <span className={`status-badge ${s.status}`}>{s.status}</span>
               </button>
               <div className="session-actions">
                 <button

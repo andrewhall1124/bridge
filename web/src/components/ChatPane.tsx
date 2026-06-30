@@ -16,13 +16,6 @@ const MODES: { value: PermissionMode; abbr: string; title: string }[] = [
   { value: "bypassPermissions", abbr: "BYPASS", title: "Run everything unprompted" },
 ];
 
-const MODE_ABBR: Record<PermissionMode, string> = {
-  plan: "PLAN",
-  default: "ASK",
-  acceptEdits: "EDIT",
-  bypassPermissions: "BYPASS",
-};
-
 interface Props {
   session: SessionMeta | null;
   stream: SessionStream;
@@ -155,14 +148,6 @@ export function ChatPane({
           <span>Drop files to attach</span>
         </div>
       )}
-      <div className="chat-modebar">
-        <span className="subtle">{session.title || "session"}</span>
-        <span className="spacer" />
-        <span className={`mode-badge mode-${mode}`} title={`Permission mode: ${mode}`}>
-          {MODE_ABBR[mode]}
-        </span>
-        <span className={`status-badge status-${stream.status}`}>{stream.status}</span>
-      </div>
       <div className="chat-scroll" ref={scrollRef}>
         {stream.loading && <div className="subtle">Loading transcript…</div>}
         {!stream.loading && stream.transcript.length === 0 && (

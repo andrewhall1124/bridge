@@ -351,52 +351,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     },
   );
 
-  app.get<{ Params: { id: string } }>("/api/repos/:id/diff", async (req, reply) => {
-    const repo = requireRepo(req.params.id);
-    try {
-      const isRepo = await git.isGitRepo(repo.path);
-      if (!isRepo)
-        return reply.code(400).send({ error: "Not a git repository", notGit: true });
-      const d = await git.diff(repo.path);
-      const st = await git.status(repo.path);
-      return { ...d, status: st };
-    } catch (err) {
-      return reply.code(400).send({ error: errMsg(err) });
-    }
-  });
-
-  app.post<{ Params: { id: string }; Body: { message?: string; files?: string[] } }>(
-    "/api/repos/:id/commit",
-    async (req, reply) => {
-      const repo = requireRepo(req.params.id);
-      const message = req.body?.message?.trim();
-      if (!message) return reply.code(400).send({ error: "Commit message is required" });
-      try {
-        const res = await git.commit(repo.path, message, req.body?.files);
-        return res;
-      } catch (err) {
-        return reply.code(400).send({ error: errMsg(err) });
-      }
-    },
-  );
-
-  app.post<{ Params: { id: string }; Body: { path?: string; all?: boolean } }>(
-    "/api/repos/:id/discard",
-    async (req, reply) => {
-      const repo = requireRepo(req.params.id);
-      try {
-        if (req.body?.all || !req.body?.path) {
-          await git.discardAll(repo.path);
-        } else {
-          await git.discardFile(repo.path, req.body.path);
-        }
-        return { ok: true };
-      } catch (err) {
-        return reply.code(400).send({ error: errMsg(err) });
-      }
-    },
-  );
-
   // ---- Railway (Deploy page) ---------------------------------------------
   // Token + environment resolve DB-first (set via the UI) then fall back to
   // env/config. The token stays server-side and is never returned to the client.

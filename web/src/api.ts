@@ -2,14 +2,12 @@
 
 import type {
   AddRepoRequest,
-  DiffResult,
   FileContent,
   FileListing,
   GitHubAuthStatus,
   GitHubDevicePoll,
   GitHubDeviceStart,
   McpServerConfig,
-  NotGitResult,
   RailwayConfig,
   RailwayProject,
   RailwayStatus,
@@ -166,27 +164,6 @@ export const api = {
     }
     return body as { files: UploadedFile[] };
   },
-  getDiff: (repoId: string) =>
-    request<DiffResult | NotGitResult>(
-      `/api/repos/${encodeURIComponent(repoId)}/diff`
-    ),
-  commit: (repoId: string, message: string, files?: string[]) =>
-    request<{ hash: string }>(
-      `/api/repos/${encodeURIComponent(repoId)}/commit`,
-      {
-        method: "POST",
-        body: JSON.stringify({ message, files }),
-      }
-    ),
-  discard: (repoId: string, opts: { path?: string; all?: boolean }) =>
-    request<{ ok: true }>(
-      `/api/repos/${encodeURIComponent(repoId)}/discard`,
-      {
-        method: "POST",
-        body: JSON.stringify(opts),
-      }
-    ),
-
   getRailwayConfig: () => request<RailwayConfig>("/api/railway/config"),
   setRailwayConfig: (patch: { apiToken?: string | null; environment?: string }) =>
     request<RailwayConfig>("/api/railway/config", {
