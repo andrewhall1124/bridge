@@ -2,9 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- No `viewport-fit=cover`: we deliberately let iOS inset the web view to the
+         safe area and paint the notch / home-indicator strips itself (with
+         `theme-color`), instead of going full-bleed and owning those pixels. That
+         avoids the fragile safe-area height math that stranded a gap below the
+         footer. With no `cover`, every `env(safe-area-inset-*)` resolves to 0. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
     />
     <title>Bridge</title>
     <meta name="description" content="Drive Claude Code on a VPS." />
@@ -12,18 +17,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
-    <meta name="theme-color" content="#0a0a0a" />
+    <!-- Match the header/footer chrome (--bg-1), not the body, so the iOS-painted
+         notch and home-indicator strips blend into the top bar and bottom tabs. -->
+    <meta name="theme-color" content="#121212" />
     <meta name="color-scheme" content="dark" />
 
-    <!-- iOS PWA -->
+    <!-- iOS PWA. No `apple-mobile-web-app-status-bar-style`: in the non-cover model
+         above, iOS keeps the web view inside the safe area and tints the status bar
+         from `theme-color`, so there's no iOS-drawn bar to fight and nothing to
+         strand at the bottom. (Setting a style here re-opts into owning the notch.) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <!-- `black` (opaque), not `black-translucent`: translucent makes iOS render
-         the web view full-bleed from the top while keeping the viewport height
-         a status-bar shorter, stranding that height as an uncovered strip at the
-         bottom (a gap below the footer). Opaque places the web view below the
-         status bar so the shell reaches the real screen bottom. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Bridge" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
