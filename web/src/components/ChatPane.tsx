@@ -282,6 +282,12 @@ export function ChatPane({
               <button
                 className="composer-btn send"
                 title="Send"
+                // Keep focus on the textarea when tapped: without this, iOS
+                // treats the first tap as a blur (dismissing the keyboard and
+                // shifting layout) so the click misses and you have to tap Send
+                // twice. Preventing the default on press stops the focus steal;
+                // the keyboard stays up and the click lands on the first tap.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={send}
                 disabled={!text.trim() && attachments.length === 0}
               >
