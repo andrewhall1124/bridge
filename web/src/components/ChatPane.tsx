@@ -274,6 +274,8 @@ export function ChatPane({
               <button
                 className="composer-btn stop"
                 title="Stop"
+                // Keep the keyboard up / avoid the iOS double-tap, same as Send.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => ws.interrupt(session.id)}
               >
                 Stop
