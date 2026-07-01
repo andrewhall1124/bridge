@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import type { PermissionMode, Settings as SettingsType } from "../../protocol";
 
-const MODEL_SUGGESTIONS = ["opus", "sonnet", "haiku", "fable"];
+const MODEL_OPTIONS: { value: string; label: string }[] = [
+  { value: "opus", label: "Opus — most capable" },
+  { value: "sonnet", label: "Sonnet — balanced" },
+  { value: "haiku", label: "Haiku — fastest" },
+  { value: "fable", label: "Fable" },
+];
 const MODE_OPTIONS: { value: PermissionMode; label: string }[] = [
   { value: "default", label: "default — ask before write/edit/run" },
   { value: "acceptEdits", label: "acceptEdits — auto-approve file edits only" },
@@ -65,19 +70,23 @@ export function GeneralSettings() {
 
       <label className="field">
         <span>Default model</span>
-        <input
-          type="text"
-          list="model-suggestions"
+        <select
           value={settings.defaultModel}
           onChange={(e) =>
             setSettings({ ...settings, defaultModel: e.target.value })
           }
-        />
-        <datalist id="model-suggestions">
-          {MODEL_SUGGESTIONS.map((m) => (
-            <option key={m} value={m} />
+        >
+          {!MODEL_OPTIONS.some((m) => m.value === settings.defaultModel) && (
+            <option value={settings.defaultModel}>
+              {settings.defaultModel || "(unset)"}
+            </option>
+          )}
+          {MODEL_OPTIONS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
           ))}
-        </datalist>
+        </select>
       </label>
 
       <label className="field">
