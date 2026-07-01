@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import type { PermissionMode, Settings as SettingsType } from "../../protocol";
 
-const MODEL_SUGGESTIONS = ["opus", "sonnet", "haiku"];
+const MODEL_SUGGESTIONS = ["opus", "sonnet", "haiku", "fable"];
 const MODE_OPTIONS: { value: PermissionMode; label: string }[] = [
   { value: "default", label: "default — ask before write/edit/run" },
   { value: "acceptEdits", label: "acceptEdits — auto-approve file edits only" },

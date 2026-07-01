@@ -2,7 +2,7 @@
 // The web client mirrors these shapes in web/src/protocol.ts — keep them in sync.
 
 export type PermissionMode = "default" | "acceptEdits" | "plan" | "bypassPermissions";
-export type ModelAlias = "opus" | "sonnet" | "haiku" | (string & {});
+export type ModelAlias = "opus" | "sonnet" | "haiku" | "fable" | (string & {});
 
 export interface Repo {
   id: string;
