@@ -40,7 +40,10 @@ body,
 }
 
 body {
-  background: var(--bg);
+  /* Chrome grey, not the content black: in the non-cover PWA model iOS paints the
+     notch and home-indicator strips by sampling the page background, so `body`
+     carries the header/footer colour and `.app` repaints the interior with --bg. */
+  background: var(--bg-1);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 13.5px;
@@ -147,6 +150,9 @@ select:focus {
   left: 0;
   right: 0;
   bottom: var(--kb, 0px);
+  /* Repaint the interior with the content black; `body` stays chrome grey so the
+     iOS-painted notch / home-indicator strips match the header and bottom tabs. */
+  background: var(--bg);
 }
 
 .topbar {
