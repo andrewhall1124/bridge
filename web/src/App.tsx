@@ -70,6 +70,10 @@ export function App() {
   const conn = useConnState();
   const wide = useMediaQuery("(min-width: 900px)");
   const stream = useSessionStream(selectedSessionId);
+  // DIAGNOSTIC (temporary): rolling log of viewport geometry around composer
+  // focus, surfaced on-screen so we can see why the composer sometimes stays
+  // under the keyboard. Revert once diagnosed.
+  const [dbg, setDbg] = useState("");
 
   // The app shell is pinned to the full screen (`.app` uses `inset: 0`). When the
   // on-screen keyboard opens, iOS leaves the layout viewport (and `window.innerHeight`)
@@ -85,30 +89,73 @@ export function App() {
     // has shrunk below the layout viewport (`window.innerHeight`, which iOS keeps
     // constant when the keyboard opens). 0 at rest, so the shell fills the screen;
     // positive while typing, so `.app` lifts its bottom edge above the keyboard.
-    const update = () => {
+    // ---- DIAGNOSTIC (temporary) ----
+    // Snapshot the viewport + composer geometry so we can read, from real
+    // numbers, why the composer sometimes stays under the keyboard. `gap` is the
+    // composer's bottom minus the visible-area bottom: > 0 means it's below the
+    // fold (hidden behind the keyboard); <= 0 means it's visible.
+    let t0 = performance.now();
+    let lines: string[] = [];
+    const snap = (evt: string) => {
+      const ta = document.querySelector(".composer-input");
+      const r = ta ? ta.getBoundingClientRect() : null;
+      const kb = Math.max(0, window.innerHeight - vv.height);
+      const visBottom = vv.offsetTop + vv.height;
+      const gap = r ? Math.round(r.bottom - visBottom) : NaN;
+      const dt = String(Math.round(performance.now() - t0)).padStart(4);
+      lines.push(
+        `+${dt} ${evt.padEnd(5)} vvH${Math.round(vv.height)} vvT${Math.round(
+          vv.offsetTop,
+        )} sY${Math.round(window.scrollY)} kb${kb} taB${
+          r ? Math.round(r.bottom) : "?"
+        } gap${gap}`,
+      );
+      if (lines.length > 16) lines = lines.slice(-16);
+      setDbg(lines.join("\n"));
+    };
+    // ---- end diagnostic setup ----
+
+    const update = (e?: Event) => {
       // `--kb` is the keyboard height: the viewport *shrink* alone. (Don't fold
       // `offsetTop` in here — that cancels the lift when the keyboard is up.)
       const kb = Math.max(0, window.innerHeight - vv.height);
       root.style.setProperty("--kb", `${kb}px`);
       // On focus iOS shifts the VisualViewport DOWN (`offsetTop` > 0) to reveal
-      // the tapped input — but only when it predicts the caret sits under the
-      // keyboard, which depends on where in the box you tapped (hence the
-      // intermittent "sometimes it lifts, sometimes it doesn't"). The shell is
-      // `position: fixed` against the layout viewport, so it doesn't follow that
-      // shift and the composer ends up back under the keyboard. Mirror `offsetTop`
-      // into `--vvt` so `.app` insets its top to track the visible region; the
-      // composer then stays pinned to the keyboard top regardless of tap point.
+      // the tapped input. The shell is `position: fixed` against the layout
+      // viewport, so it doesn't follow that shift and the composer ends up back
+      // under the keyboard. Mirror `offsetTop` into `--vvt` so `.app` insets its
+      // top to track the visible region.
       root.style.setProperty("--vvt", `${Math.max(0, vv.offsetTop)}px`);
       // Also undo any layout-viewport scroll iOS applied (a different axis than
       // `offsetTop`), so the pinned shell stays aligned with the visible area.
       if (window.scrollY !== 0) window.scrollTo(0, 0);
+      snap(e ? e.type.slice(0, 5) : "init");
+    };
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t || !t.classList.contains("composer-input")) return;
+      t0 = performance.now();
+      lines = [];
+      snap("focus");
+      // Sample the settled state as the keyboard animates in.
+      [120, 300, 600, 1000].forEach((ms) =>
+        window.setTimeout(() => snap(`s${ms}`), ms),
+      );
+    };
+    const onFocusOut = (e: FocusEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && t.classList.contains("composer-input")) snap("blur");
     };
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
     };
   }, []);
 
@@ -290,6 +337,29 @@ export function App() {
 
   return (
     <div className="app">
+      {/* DIAGNOSTIC (temporary): viewport geometry log. Revert once diagnosed. */}
+      {dbg && (
+        <pre
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 99999,
+            margin: 0,
+            padding: "2px 4px",
+            background: "rgba(255,140,66,0.92)",
+            color: "#000",
+            font: "9px/1.25 monospace",
+            whiteSpace: "pre",
+            pointerEvents: "none",
+            maxHeight: "48vh",
+            overflow: "hidden",
+          }}
+        >
+          {dbg}
+        </pre>
+      )}
       <header className="topbar">
         {!wide && (
           <button
