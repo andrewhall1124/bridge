@@ -2234,3 +2234,52 @@ textarea.mono {
   padding: 8px 0;
   user-select: all;
 }
+
+/* ---------- Claude usage ---------- */
+.usage-limits {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 12px 0;
+  max-width: 480px;
+}
+.usage-limit {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--bg-1);
+}
+.usage-limit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.usage-limit-pct {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+.usage-bar {
+  height: 8px;
+  border-radius: var(--radius);
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.usage-bar-fill {
+  height: 100%;
+  border-radius: var(--radius);
+  transition: width 0.3s ease;
+}
+.usage-bar-fill.ok {
+  background: var(--accent);
+}
+.usage-bar-fill.warn {
+  background: var(--warn);
+}
+.usage-bar-fill.critical {
+  background: var(--danger);
+}
+.usage-limit-reset {
+  margin-top: 6px;
+  font-size: 12px;
+}

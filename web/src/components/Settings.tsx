@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GeneralSettings } from "./settings/GeneralSettings";
+import { UsageSettings } from "./settings/UsageSettings";
 import { NotificationsSettings } from "./settings/NotificationsSettings";
 import { McpSettings } from "./settings/McpSettings";
 import { ClaudeMdSettings } from "./settings/ClaudeMdSettings";
@@ -9,6 +10,7 @@ import { GitHubSettings } from "./settings/GitHubSettings";
 
 type Section =
   | "general"
+  | "usage"
   | "notifications"
   | "mcp"
   | "claudemd"
@@ -18,6 +20,7 @@ type Section =
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "general", label: "General" },
+  { id: "usage", label: "Usage" },
   { id: "notifications", label: "Notifications" },
   { id: "mcp", label: "MCP Servers" },
   { id: "claudemd", label: "CLAUDE.md" },
@@ -46,6 +49,7 @@ export function Settings() {
       </nav>
 
       {section === "general" && <GeneralSettings />}
+      {section === "usage" && <UsageSettings />}
       {section === "notifications" && <NotificationsSettings />}
       {section === "mcp" && <McpSettings />}
       {section === "claudemd" && <ClaudeMdSettings />}

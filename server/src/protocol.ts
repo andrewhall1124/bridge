@@ -133,6 +133,24 @@ export interface McpHttpServer {
 }
 export type McpServerConfig = McpStdioServer | McpHttpServer;
 
+// ---- Claude subscription usage (Settings → Usage) ----
+export interface ClaudeUsageLimit {
+  /** e.g. "session" (5-hour window), "weekly_all", "weekly_scoped" (per-model). */
+  kind: string;
+  /** Percent of the window consumed, 0–100. */
+  percent: number;
+  /** ISO timestamp when this window resets. */
+  resetsAt: string | null;
+  /** Model display name for model-scoped limits (e.g. "Fable"), else null. */
+  model: string | null;
+}
+export interface ClaudeUsage {
+  /** Plan from the stored credentials, e.g. "max" or "pro". */
+  subscriptionType: string | null;
+  limits: ClaudeUsageLimit[];
+  fetchedAt: string;
+}
+
 // ---- GitHub auth (device flow, managed via Settings) ----
 export interface GitHubAuthStatus {
   authenticated: boolean;

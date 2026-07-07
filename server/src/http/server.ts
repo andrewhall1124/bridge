@@ -16,6 +16,7 @@ import * as railway from "../railway/client.js";
 import { getConfig } from "../config.js";
 import * as userClaude from "../userClaude.js";
 import * as github from "../github.js";
+import * as usage from "../usage.js";
 import { randomSessionName } from "../names.js";
 import type { PermissionMode, Repo, Settings } from "../protocol.js";
 
@@ -209,6 +210,15 @@ export async function buildServer(): Promise<FastifyInstance> {
       return { hooks: userClaude.readHooks() };
     } catch (err) {
       return reply.code(400).send({ error: errMsg(err) });
+    }
+  });
+
+  // ---- Claude subscription usage ------------------------------------------
+  app.get("/api/usage", async (_req, reply) => {
+    try {
+      return await usage.getUsage();
+    } catch (err) {
+      return reply.code(502).send({ error: errMsg(err) });
     }
   });
 

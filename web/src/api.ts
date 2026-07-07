@@ -2,6 +2,7 @@
 
 import type {
   AddRepoRequest,
+  ClaudeUsage,
   FileContent,
   FileListing,
   GitHubAuthStatus,
@@ -104,6 +105,8 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ hooks }),
     }),
+
+  getUsage: () => request<ClaudeUsage>("/api/usage"),
 
   // GitHub auth (device flow)
   getGitHubStatus: () => request<GitHubAuthStatus>("/api/github/status"),
