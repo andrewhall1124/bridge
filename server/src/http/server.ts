@@ -36,6 +36,28 @@ function uniqueRepoId(base: string): string {
   return id;
 }
 
+// Pick a directory under `baseDir` named `name`, adding a -2/-3 suffix until it
+// doesn't already exist on disk. Keeps every repo in the same parent folder.
+function uniqueDir(baseDir: string, name: string): string {
+  let candidate = join(baseDir, name);
+  let n = 2;
+  while (existsSync(candidate)) candidate = join(baseDir, `${name}-${n++}`);
+  return candidate;
+}
+
+// Derive a repo folder name from a clone URL: last path segment, minus ".git".
+function nameFromUrl(url: string): string {
+  const cleaned = url.trim().replace(/\/+$/, "").replace(/\.git$/i, "");
+  const seg = cleaned.split(/[/:]/).filter(Boolean).pop() ?? "repo";
+  return slugify(seg);
+}
+
+// Derive a repo folder name from a free-text prompt (first few words, slugified).
+function nameFromPrompt(prompt: string): string {
+  const slug = slugify(prompt.split(/\s+/).slice(0, 6).join(" "));
+  return slug.slice(0, 40).replace(/-+$/, "") || "project";
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = resolve(process.env.WEB_DIST ?? resolve(here, "../../../web/dist"));
 
@@ -82,39 +104,31 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   app.get("/api/repos", async () => ({ repos: dbm.listRepos() }));
 
-  // Add a repo to the picker. Three modes:
-  //   existing — register a directory already on disk
-  //   init     — create a new directory and `git init`
-  //   clone    — `git clone <url>` into the destination path
+  // Add a repo to the picker. Two modes, both creating the repo under the
+  // shared `reposDir` — the caller never supplies a file path:
+  //   init  — create a new directory (from a name or a prompt) and `git init`
+  //   clone — `git clone <url>` into a folder named after the URL
   app.post<{
-    Body: { mode?: "existing" | "init" | "clone"; path?: string; url?: string };
+    Body: { mode?: "init" | "clone"; name?: string; prompt?: string; url?: string };
   }>("/api/repos", async (req, reply) => {
     const body = req.body ?? {};
-    const mode = body.mode ?? "existing";
+    const mode = body.mode ?? "init";
+    const reposDir = getConfig().reposDir;
 
     try {
       let absPath: string;
       if (mode === "clone") {
         const url = body.url?.trim();
-        const dest = body.path?.trim();
-        if (!url) return reply.code(400).send({ error: "url is required to clone" });
-        if (!dest)
-          return reply.code(400).send({ error: "destination path is required to clone" });
-        absPath = git.expandPath(dest);
+        if (!url) return reply.code(400).send({ error: "Repository URL is required." });
+        absPath = uniqueDir(reposDir, nameFromUrl(url));
         await git.gitClone(url, absPath);
-      } else if (mode === "init") {
-        const p = body.path?.trim();
-        if (!p) return reply.code(400).send({ error: "path is required" });
-        absPath = git.expandPath(p);
-        await git.gitInit(absPath);
       } else {
-        const p = body.path?.trim();
-        if (!p) return reply.code(400).send({ error: "path is required" });
-        absPath = git.expandPath(p);
-        if (!(await git.isDirectory(absPath)))
-          return reply
-            .code(400)
-            .send({ error: `Path does not exist or is not a directory: ${absPath}` });
+        const name = body.name?.trim();
+        const prompt = body.prompt?.trim();
+        const base = name ? slugify(name) : prompt ? nameFromPrompt(prompt) : "";
+        if (!base) return reply.code(400).send({ error: "A name or prompt is required." });
+        absPath = uniqueDir(reposDir, base);
+        await git.gitInit(absPath);
       }
 
       const name = basename(absPath);

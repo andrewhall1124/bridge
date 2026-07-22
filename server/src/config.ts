@@ -32,6 +32,8 @@ export interface AppConfig {
   defaultModel: string;
   defaultPermissionMode: PermissionMode;
   repos: Repo[];
+  /** Base folder new/cloned repos are created under (all live side by side). */
+  reposDir: string;
   mcpServers: Record<string, McpServerEntry>;
   /** Railway API token (account scope) for the Deploy page. Null disables it.
    *  Each repo is linked to a specific Railway project in the UI. */
@@ -184,6 +186,7 @@ export function getConfig(): AppConfig {
       file.defaultPermissionMode ?? "default",
     ),
     repos: resolveRepos(file),
+    reposDir: resolve(process.env.REPOS_DIR ?? file.reposDir ?? "/srv/repos"),
     mcpServers: file.mcpServers ?? {},
     railwayApiToken:
       process.env.RAILWAY_API_TOKEN ?? file.railwayApiToken ?? null,

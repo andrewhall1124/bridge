@@ -193,10 +193,23 @@ export function App() {
     // one fluid step; creating a session is what closes it.
   }
 
-  function onRepoAdded(repo: Repo) {
-    void loadRepos();
+  async function onRepoAdded(repo: Repo, seedPrompt?: string) {
+    await loadRepos();
     setSelectedRepoId(repo.id);
     setSelectedSessionId(null);
+    // Created from a prompt: open a fresh session and kick it off with the prompt.
+    if (seedPrompt) {
+      try {
+        const res = await api.createSession(repo.id, seedPrompt.slice(0, 60));
+        await loadSessions();
+        setSelectedSessionId(res.session.id);
+        setSidebarOpen(false);
+        setTab("chat");
+        ws.sendText(res.session.id, seedPrompt);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : String(err));
+      }
+    }
   }
 
   async function removeRepo(id: string) {

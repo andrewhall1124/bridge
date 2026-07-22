@@ -292,11 +292,15 @@ export type GlobalEvent =
   | { type: "sessions_changed" }
   | { type: "repos_changed" };
 
-export type AddRepoMode = "existing" | "init" | "clone";
+export type AddRepoMode = "init" | "clone";
 
 export interface AddRepoRequest {
   mode: AddRepoMode;
-  path?: string;
+  /** New repo: a name to create the directory from. */
+  name?: string;
+  /** New repo: a prompt describing what to build (a name is derived from it). */
+  prompt?: string;
+  /** Clone: the remote repository URL. */
   url?: string;
 }
 

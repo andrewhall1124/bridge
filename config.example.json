@@ -5,6 +5,7 @@
   "anthropicApiKey": null,
   "defaultModel": "opus",
   "defaultPermissionMode": "default",
+  "reposDir": "/srv/repos",
   "repos": [
     {
       "id": "example",

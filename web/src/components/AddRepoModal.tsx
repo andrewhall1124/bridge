@@ -4,30 +4,31 @@ import type { AddRepoMode, Repo } from "../protocol";
 
 interface Props {
   onClose: () => void;
-  onAdded: (repo: Repo) => void;
+  /** Called after the repo is created. `seedPrompt` is set when the repo was
+   *  created from a prompt and a chat session should be started with it. */
+  onAdded: (repo: Repo, seedPrompt?: string) => void;
 }
 
 const MODES: { value: AddRepoMode; label: string; hint: string }[] = [
   {
-    value: "existing",
-    label: "Existing",
-    hint: "Register a repo that already exists on the server's disk.",
-  },
-  {
     value: "init",
     label: "New",
-    hint: "Create a new directory on the server and run git init.",
+    hint: "Create a new repo on the server — give it a name, or describe what you want to build.",
   },
   {
     value: "clone",
     label: "Clone",
-    hint: "git clone a remote repo into a destination path on the server.",
+    hint: "git clone a remote repo. Just paste the URL; it's cloned into the repos folder.",
   },
 ];
 
+type NewKind = "name" | "prompt";
+
 export function AddRepoModal({ onClose, onAdded }: Props) {
-  const [mode, setMode] = useState<AddRepoMode>("existing");
-  const [path, setPath] = useState("");
+  const [mode, setMode] = useState<AddRepoMode>("init");
+  const [newKind, setNewKind] = useState<NewKind>("name");
+  const [name, setName] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,16 +37,23 @@ export function AddRepoModal({ onClose, onAdded }: Props) {
 
   async function submit() {
     setError(null);
-    if (mode === "clone" && !url.trim()) return setError("Repository URL is required.");
-    if (!path.trim()) return setError("Path is required.");
+    let req;
+    let seedPrompt: string | undefined;
+    if (mode === "clone") {
+      if (!url.trim()) return setError("Repository URL is required.");
+      req = { mode, url: url.trim() };
+    } else if (newKind === "prompt") {
+      if (!prompt.trim()) return setError("A prompt is required.");
+      seedPrompt = prompt.trim();
+      req = { mode, prompt: seedPrompt };
+    } else {
+      if (!name.trim()) return setError("A name is required.");
+      req = { mode, name: name.trim() };
+    }
     setBusy(true);
     try {
-      const res = await api.addRepo({
-        mode,
-        path: path.trim() || undefined,
-        url: url.trim() || undefined,
-      });
-      onAdded(res.repo);
+      const res = await api.addRepo(req);
+      onAdded(res.repo, seedPrompt);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -84,7 +92,7 @@ export function AddRepoModal({ onClose, onAdded }: Props) {
         </div>
         <p className="subtle modal-hint">{hint}</p>
 
-        {mode === "clone" && (
+        {mode === "clone" ? (
           <label className="field">
             <span>Repository URL</span>
             <input
@@ -93,27 +101,57 @@ export function AddRepoModal({ onClose, onAdded }: Props) {
               placeholder="https://github.com/owner/repo.git  or  git@github.com:owner/repo.git"
               onChange={(e) => setUrl(e.target.value)}
               disabled={busy}
+              autoFocus
             />
           </label>
+        ) : (
+          <>
+            <div className="modal-tabs">
+              <button
+                className={`modal-tab ${newKind === "name" ? "active" : ""}`}
+                onClick={() => setNewKind("name")}
+                disabled={busy}
+              >
+                Name
+              </button>
+              <button
+                className={`modal-tab ${newKind === "prompt" ? "active" : ""}`}
+                onClick={() => setNewKind("prompt")}
+                disabled={busy}
+              >
+                Prompt
+              </button>
+            </div>
+            {newKind === "name" ? (
+              <label className="field">
+                <span>Repo name</span>
+                <input
+                  type="text"
+                  value={name}
+                  placeholder="my-project"
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={busy}
+                  autoFocus
+                />
+              </label>
+            ) : (
+              <label className="field">
+                <span>What do you want to build?</span>
+                <textarea
+                  value={prompt}
+                  rows={4}
+                  placeholder="A CLI that converts Markdown to nicely-formatted PDFs…"
+                  onChange={(e) => setPrompt(e.target.value)}
+                  disabled={busy}
+                  autoFocus
+                />
+                <span className="subtle modal-hint">
+                  A repo name is derived from this, then a chat session starts with your prompt.
+                </span>
+              </label>
+            )}
+          </>
         )}
-
-        <label className="field">
-          <span>
-            {mode === "clone"
-              ? "Destination path (on the server)"
-              : mode === "init"
-                ? "New directory path (on the server)"
-                : "Existing path (on the server)"}
-          </span>
-          <input
-            type="text"
-            value={path}
-            placeholder="/srv/repos/my-project  (or ~/code/my-project)"
-            onChange={(e) => setPath(e.target.value)}
-            disabled={busy}
-            autoFocus
-          />
-        </label>
 
         {error && <div className="system-line error modal-error">{error}</div>}
 
