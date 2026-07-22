@@ -559,6 +559,52 @@ export function isActive(sessionId: string): boolean {
   return active.has(sessionId);
 }
 
+function toSlug(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// Ask the model for a short repo name from a free-text project prompt. Runs a
+// single, tool-free turn through the SDK so it bills the same way as chat
+// sessions (subscription unless an API key is configured). Returns a kebab-case
+// slug, or null if the model is unavailable/empty so the caller can fall back.
+export async function suggestRepoName(prompt: string): Promise<string | null> {
+  try {
+    const q = query({
+      prompt:
+        "Suggest a concise repository name for the project described below. " +
+        "Reply with ONLY the name as 2-4 lowercase words in kebab-case " +
+        "(hyphen-separated) — no punctuation, quotes, or explanation.\n\n" +
+        `Project: ${prompt}`,
+      options: {
+        model: dbm.getSettings().defaultModel,
+        env: agentEnv(),
+        // Keep it light: no user CLAUDE.md/hooks, no MCP servers, no tools.
+        settingSources: [],
+        permissionMode: "bypassPermissions",
+        allowDangerouslySkipPermissions: true,
+      },
+    });
+    let text = "";
+    for await (const message of q) {
+      const m = message as { type: string; message?: { content?: unknown } };
+      if (m.type === "assistant" && Array.isArray(m.message?.content)) {
+        for (const block of m.message.content as { type?: string; text?: string }[]) {
+          if (block?.type === "text" && typeof block.text === "string") text += block.text;
+        }
+      }
+    }
+    const line = text.trim().split("\n").map((s) => s.trim()).filter(Boolean).pop() ?? "";
+    const slug = toSlug(line).split("-").slice(0, 5).join("-");
+    return slug || null;
+  } catch (err) {
+    log.warn("suggestRepoName failed:", err);
+    return null;
+  }
+}
+
 // Tear down a live agent for a session (e.g. before deleting it). Resolves any
 // pending approvals/questions so the SDK process can exit cleanly.
 export function closeSession(sessionId: string): void {

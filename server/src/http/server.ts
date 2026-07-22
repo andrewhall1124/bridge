@@ -10,7 +10,7 @@ import { log } from "../logger.js";
 import * as dbm from "../db.js";
 import { emitGlobal } from "../bus.js";
 import { getVapidPublicKey } from "../push.js";
-import { closeSession } from "../agent/sessionManager.js";
+import { closeSession, suggestRepoName } from "../agent/sessionManager.js";
 import * as git from "../git/repo.js";
 import * as railway from "../railway/client.js";
 import { getConfig } from "../config.js";
@@ -125,8 +125,15 @@ export async function buildServer(): Promise<FastifyInstance> {
       } else {
         const name = body.name?.trim();
         const prompt = body.prompt?.trim();
-        const base = name ? slugify(name) : prompt ? nameFromPrompt(prompt) : "";
-        if (!base) return reply.code(400).send({ error: "A name or prompt is required." });
+        let base: string;
+        if (name) {
+          base = slugify(name);
+        } else if (prompt) {
+          // Let the model choose a proper name; fall back to a slug of the prompt.
+          base = (await suggestRepoName(prompt)) || nameFromPrompt(prompt);
+        } else {
+          return reply.code(400).send({ error: "A name or prompt is required." });
+        }
         absPath = uniqueDir(reposDir, base);
         await git.gitInit(absPath);
       }
