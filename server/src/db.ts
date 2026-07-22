@@ -137,6 +137,12 @@ export function deleteRepo(id: string): void {
   db.prepare(`DELETE FROM repos WHERE id = ?`).run(id);
 }
 
+// Rename a repo: update its display name and on-disk path (id stays stable so
+// existing sessions keep pointing at it).
+export function renameRepo(id: string, name: string, path: string): void {
+  db.prepare(`UPDATE repos SET name = ?, path = ? WHERE id = ?`).run(name, path, id);
+}
+
 // Link (or unlink, with null) a repo to a Railway project for the Deploy page.
 export function setRepoRailway(id: string, railwayProjectId: string | null): void {
   db.prepare(`UPDATE repos SET railway_project_id = ? WHERE id = ?`).run(

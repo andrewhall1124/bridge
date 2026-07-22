@@ -146,7 +146,8 @@ export function AddRepoModal({ onClose, onAdded }: Props) {
                   autoFocus
                 />
                 <span className="subtle modal-hint">
-                  A repo name is chosen automatically, then a chat session starts with your prompt.
+                  Starts a chat session with your prompt under a placeholder name; the
+                  agent renames the repo once it knows what you're building.
                 </span>
               </label>
             )}

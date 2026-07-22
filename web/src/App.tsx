@@ -205,7 +205,11 @@ export function App() {
         setSelectedSessionId(res.session.id);
         setSidebarOpen(false);
         setTab("chat");
-        ws.sendText(res.session.id, seedPrompt);
+        const seed =
+          `${seedPrompt}\n\n` +
+          `(This repo was created with a placeholder name, "${repo.name}". ` +
+          `Once you know what we're building, rename it with the rename_repo tool.)`;
+        ws.sendText(res.session.id, seed);
       } catch (err) {
         alert(err instanceof Error ? err.message : String(err));
       }

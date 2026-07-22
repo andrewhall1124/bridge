@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { existsSync } from "node:fs";
+import { rename } from "node:fs/promises";
+import { basename, join } from "node:path";
+import { z } from "zod";
+import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import type {
   Query,
   SDKMessage,
@@ -409,7 +413,11 @@ function startSession(sessionId: string): ActiveSession {
     // Bridge's own config.json servers plus the user-scope MCP servers managed
     // from Settings (~/.claude.json). Read fresh per session so edits take
     // effect for new sessions without a restart.
-    mcpServers: { ...config.mcpServers, ...readUserMcpServers() },
+    mcpServers: {
+      ...config.mcpServers,
+      ...readUserMcpServers(),
+      bridge: buildBridgeMcpServer(sessionId, meta.repoId),
+    },
     // The SDK requires this opt-in before bypassPermissions can take effect.
     // We enable it for chat sessions so the owner can switch a live session
     // into bypass from the UI. It is only a *precondition* — it never bypasses
@@ -566,43 +574,70 @@ function toSlug(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// Ask the model for a short repo name from a free-text project prompt. Runs a
-// single, tool-free turn through the SDK so it bills the same way as chat
-// sessions (subscription unless an API key is configured). Returns a kebab-case
-// slug, or null if the model is unavailable/empty so the caller can fall back.
-export async function suggestRepoName(prompt: string): Promise<string | null> {
-  try {
-    const q = query({
-      prompt:
-        "Suggest a concise repository name for the project described below. " +
-        "Reply with ONLY the name as 2-4 lowercase words in kebab-case " +
-        "(hyphen-separated) — no punctuation, quotes, or explanation.\n\n" +
-        `Project: ${prompt}`,
-      options: {
-        model: dbm.getSettings().defaultModel,
-        env: agentEnv(),
-        // Keep it light: no user CLAUDE.md/hooks, no MCP servers, no tools.
-        settingSources: [],
-        permissionMode: "bypassPermissions",
-        allowDangerouslySkipPermissions: true,
-      },
-    });
-    let text = "";
-    for await (const message of q) {
-      const m = message as { type: string; message?: { content?: unknown } };
-      if (m.type === "assistant" && Array.isArray(m.message?.content)) {
-        for (const block of m.message.content as { type?: string; text?: string }[]) {
-          if (block?.type === "text" && typeof block.text === "string") text += block.text;
-        }
-      }
-    }
-    const line = text.trim().split("\n").map((s) => s.trim()).filter(Boolean).pop() ?? "";
-    const slug = toSlug(line).split("-").slice(0, 5).join("-");
-    return slug || null;
-  } catch (err) {
-    log.warn("suggestRepoName failed:", err);
-    return null;
-  }
+// Pick a folder under reposDir named `slug`, adding -2/-3 until it's free.
+function uniqueRepoDir(slug: string): string {
+  let candidate = join(config.reposDir, slug);
+  let n = 2;
+  while (existsSync(candidate)) candidate = join(config.reposDir, `${slug}-${n++}`);
+  return candidate;
+}
+
+// A per-session MCP server exposing Bridge-native tools to the agent. Currently
+// just `rename_repo`, so a repo created with a placeholder name (e.g. new-app-1)
+// can be given a real name once the agent knows what it's building.
+function buildBridgeMcpServer(sessionId: string, repoId: string) {
+  return createSdkMcpServer({
+    name: "bridge",
+    version: "1.0.0",
+    // Keep the tool in the prompt so the model can rename without a tool search.
+    alwaysLoad: true,
+    tools: [
+      tool(
+        "rename_repo",
+        "Rename THIS repository — both its folder on disk and the name shown in " +
+          "Bridge's sidebar. Use it once the project's purpose is clear (e.g. a repo " +
+          "created as \"new-app-1\" can become \"todo-cli\"). Give a short, descriptive " +
+          "name; it is slugified to kebab-case for the folder.",
+        { name: z.string().describe("The new repository name, e.g. \"Todo CLI\".") },
+        async (args) => {
+          const slug = toSlug(args.name);
+          if (!slug) {
+            return { content: [{ type: "text", text: "That name is empty after slugifying — pick another." }] };
+          }
+          const repo = dbm.getRepo(repoId);
+          if (!repo) {
+            return { content: [{ type: "text", text: `Repo ${repoId} no longer exists.` }] };
+          }
+          if (basename(repo.path) === slug) {
+            return { content: [{ type: "text", text: `The repo is already named "${slug}".` }] };
+          }
+          const newPath = uniqueRepoDir(slug);
+          try {
+            await rename(repo.path, newPath);
+          } catch (err) {
+            return {
+              content: [
+                { type: "text", text: `Rename failed: ${err instanceof Error ? err.message : String(err)}` },
+              ],
+            };
+          }
+          const newName = basename(newPath);
+          dbm.renameRepo(repoId, newName, newPath);
+          // Keep the live session's cached path in step (its cwd inode already
+          // followed the move on Linux, so the agent keeps working uninterrupted).
+          const sess = active.get(sessionId);
+          if (sess) sess.repoPath = newPath;
+          emitGlobal({ type: "repos_changed" });
+          log.info(`Session ${sessionId} renamed repo ${repoId} -> ${newName} (${newPath})`);
+          return {
+            content: [
+              { type: "text", text: `Renamed to "${newName}". New path: ${newPath}` },
+            ],
+          };
+        },
+      ),
+    ],
+  });
 }
 
 // Tear down a live agent for a session (e.g. before deleting it). Resolves any

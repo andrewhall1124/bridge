@@ -10,7 +10,7 @@ import { log } from "../logger.js";
 import * as dbm from "../db.js";
 import { emitGlobal } from "../bus.js";
 import { getVapidPublicKey } from "../push.js";
-import { closeSession, suggestRepoName } from "../agent/sessionManager.js";
+import { closeSession } from "../agent/sessionManager.js";
 import * as git from "../git/repo.js";
 import * as railway from "../railway/client.js";
 import { getConfig } from "../config.js";
@@ -52,10 +52,13 @@ function nameFromUrl(url: string): string {
   return slugify(seg);
 }
 
-// Derive a repo folder name from a free-text prompt (first few words, slugified).
-function nameFromPrompt(prompt: string): string {
-  const slug = slugify(prompt.split(/\s+/).slice(0, 6).join(" "));
-  return slug.slice(0, 40).replace(/-+$/, "") || "project";
+// Deterministic placeholder name for a prompt-created repo: new-app-1, -2, …
+// (the agent renames it later via the rename_repo tool). Skips names already
+// taken on disk or in the repo registry.
+function nextNewAppName(reposDir: string): string {
+  let n = 1;
+  while (existsSync(join(reposDir, `new-app-${n}`)) || dbm.getRepo(`new-app-${n}`)) n++;
+  return `new-app-${n}`;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -129,8 +132,8 @@ export async function buildServer(): Promise<FastifyInstance> {
         if (name) {
           base = slugify(name);
         } else if (prompt) {
-          // Let the model choose a proper name; fall back to a slug of the prompt.
-          base = (await suggestRepoName(prompt)) || nameFromPrompt(prompt);
+          // Placeholder name; the agent renames the repo once it knows the goal.
+          base = nextNewAppName(reposDir);
         } else {
           return reply.code(400).send({ error: "A name or prompt is required." });
         }
