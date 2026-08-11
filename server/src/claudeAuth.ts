@@ -19,7 +19,6 @@ import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { log } from "./logger.js";
 import { agentEnv } from "./agent/sessionManager.js";
 import { resetUsageCache } from "./usage.js";
@@ -28,8 +27,6 @@ import type {
   ClaudeLoginResult,
   ClaudeLoginStart,
 } from "./protocol.js";
-
-const execFileAsync = promisify(execFile);
 
 const CLAUDE_BIN = process.env.CLAUDE_BIN ?? "claude";
 const CLAUDE_JSON = join(homedir(), ".claude.json");
@@ -161,10 +158,9 @@ export function cancelLogin(): void {
 
 export async function signOut(): Promise<void> {
   cancelLogin();
-  await execFileAsync(CLAUDE_BIN, ["auth", "logout"], {
-    env: agentEnv(),
-    timeout: 15_000,
-  });
+  // Exit code is ignored for the same reason as in runClaude; the panel
+  // re-reads the status straight after, which is the real check.
+  await runClaude(["auth", "logout"]);
   resetUsageCache();
 }
 
@@ -263,12 +259,23 @@ interface CliStatus {
   authMethod: string;
 }
 
+/**
+ * Run the CLI and capture stdout whether or not it exits non-zero: `claude auth
+ * status` exits 1 when signed out but still prints the JSON we want. Rejects
+ * only when the process couldn't run at all (missing binary, timeout kill).
+ */
+function runClaude(args: string[], timeoutMs = 15_000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(CLAUDE_BIN, args, { env: agentEnv(), timeout: timeoutMs }, (err, stdout) => {
+      if (err && typeof (err as { code?: unknown }).code !== "number") reject(err);
+      else resolve(stdout);
+    });
+  });
+}
+
 async function readCliStatus(): Promise<CliStatus> {
   try {
-    const { stdout } = await execFileAsync(CLAUDE_BIN, ["auth", "status", "--json"], {
-      env: agentEnv(),
-      timeout: 15_000,
-    });
+    const stdout = await runClaude(["auth", "status", "--json"]);
     const start = stdout.indexOf("{");
     if (start < 0) throw new Error("no JSON in output");
     const parsed = JSON.parse(stdout.slice(start)) as {
