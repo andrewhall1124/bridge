@@ -330,11 +330,19 @@ function stripAnsi(text: string): string {
     .replace(/\r/g, "\n"); // PTY redraws
 }
 
-/** The last non-empty line, for surfacing why a flow failed. */
+/**
+ * The last non-empty line, for surfacing why a flow failed. The PTY echoes the
+ * CLI's prompt (and whatever was typed at it) onto the same line as the result,
+ * so anything up to the final prompt marker is dropped — which also keeps the
+ * pasted code out of the message we hand back to the browser.
+ */
 function lastMeaningfulLine(output: string): string {
-  const lines = output
+  const line = output
     .split("\n")
     .map((l) => l.trim())
-    .filter(Boolean);
-  return lines.at(-1)?.slice(0, 300) ?? "";
+    .filter(Boolean)
+    .at(-1);
+  if (!line) return "";
+  const promptEnd = line.lastIndexOf("> ");
+  return (promptEnd >= 0 ? line.slice(promptEnd + 2) : line).slice(0, 300);
 }
