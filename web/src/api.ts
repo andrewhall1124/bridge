@@ -2,6 +2,9 @@
 
 import type {
   AddRepoRequest,
+  ClaudeAuthStatus,
+  ClaudeLoginResult,
+  ClaudeLoginStart,
   ClaudeUsage,
   FileContent,
   FileListing,
@@ -107,6 +110,20 @@ export const api = {
     }),
 
   getUsage: () => request<ClaudeUsage>("/api/usage"),
+
+  // Claude Code auth (drives `claude auth login` on the server)
+  getClaudeAuth: () => request<ClaudeAuthStatus>("/api/claude/auth"),
+  startClaudeLogin: () =>
+    request<ClaudeLoginStart>("/api/claude/auth/login", { method: "POST", body: "{}" }),
+  submitClaudeCode: (code: string) =>
+    request<ClaudeLoginResult>("/api/claude/auth/code", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  cancelClaudeLogin: () =>
+    request<{ ok: true }>("/api/claude/auth/cancel", { method: "POST", body: "{}" }),
+  signOutClaude: () =>
+    request<{ ok: true }>("/api/claude/auth/logout", { method: "POST", body: "{}" }),
 
   // GitHub auth (device flow)
   getGitHubStatus: () => request<GitHubAuthStatus>("/api/github/status"),

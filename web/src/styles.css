@@ -2205,8 +2205,8 @@ textarea.mono {
   width: auto;
 }
 
-/* ---------- GitHub auth ---------- */
-.gh-status {
+/* ---------- Auth panels (GitHub, Claude account) ---------- */
+.auth-status {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2215,17 +2215,17 @@ textarea.mono {
   padding: 10px 12px;
   background: var(--bg-1);
 }
-.gh-badge {
+.auth-badge {
   color: var(--accent);
   text-shadow: 0 0 6px var(--accent);
 }
-.gh-flow {
+.auth-flow {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
   background: var(--bg-1);
 }
-.gh-code {
+.auth-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 26px;
   letter-spacing: 4px;
@@ -2233,6 +2233,40 @@ textarea.mono {
   color: var(--accent);
   padding: 8px 0;
   user-select: all;
+}
+/* Numbered steps inside .auth-flow. */
+.auth-step {
+  margin: 0 0 12px;
+}
+.auth-step:last-child {
+  margin-bottom: 0;
+}
+.auth-step-label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+/* A long authorize URL: wraps rather than stretching the pane on a phone. */
+.auth-url {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+.auth-paste {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.auth-paste input {
+  flex: 1;
+  min-width: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ---------- Claude usage ---------- */

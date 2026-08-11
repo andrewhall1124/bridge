@@ -114,8 +114,8 @@ export function GitHubSettings() {
       </p>
 
       {status?.authenticated ? (
-        <div className="gh-status">
-          <span className="gh-badge">●</span>
+        <div className="auth-status">
+          <span className="auth-badge">●</span>
           <span>
             Signed in as <strong>{status.login}</strong>
             {status.ghCli ? " (git + gh)" : " (git)"}
@@ -125,7 +125,7 @@ export function GitHubSettings() {
           </button>
         </div>
       ) : flow ? (
-        <div className="gh-flow">
+        <div className="auth-flow">
           <p>
             1. Open{" "}
             <a href={flow.verificationUri} target="_blank" rel="noreferrer">
@@ -133,7 +133,7 @@ export function GitHubSettings() {
             </a>
             <br />2. Enter this code, then authorize:
           </p>
-          <div className="gh-code">{flow.userCode}</div>
+          <div className="auth-code">{flow.userCode}</div>
           <p className="subtle">Waiting for authorization…</p>
         </div>
       ) : (

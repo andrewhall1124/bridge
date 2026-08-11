@@ -7,9 +7,11 @@ import { ClaudeMdSettings } from "./settings/ClaudeMdSettings";
 import { HooksSettings } from "./settings/HooksSettings";
 import { RailwaySettings } from "./settings/RailwaySettings";
 import { GitHubSettings } from "./settings/GitHubSettings";
+import { ClaudeAuthSettings } from "./settings/ClaudeAuthSettings";
 
 type Section =
   | "general"
+  | "account"
   | "usage"
   | "notifications"
   | "mcp"
@@ -20,6 +22,7 @@ type Section =
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "general", label: "General" },
+  { id: "account", label: "Account" },
   { id: "usage", label: "Usage" },
   { id: "notifications", label: "Notifications" },
   { id: "mcp", label: "MCP Servers" },
@@ -49,6 +52,7 @@ export function Settings() {
       </nav>
 
       {section === "general" && <GeneralSettings />}
+      {section === "account" && <ClaudeAuthSettings />}
       {section === "usage" && <UsageSettings />}
       {section === "notifications" && <NotificationsSettings />}
       {section === "mcp" && <McpSettings />}
