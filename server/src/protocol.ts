@@ -172,6 +172,33 @@ export interface GitHubDevicePoll {
   interval?: number;
 }
 
+// ---- Claude Code auth (Settings → Account) ----
+export interface ClaudeAuthStatus {
+  loggedIn: boolean;
+  /** As reported by `claude auth status`: "claudeai", "console", "none", … */
+  authMethod: string;
+  /** Account email, when Claude Code has recorded one. */
+  email?: string;
+  /** Subscription tier ("max", "pro", …), when known. */
+  subscriptionType?: string;
+  /** True while a sign-in started from the UI is waiting for a pasted code. */
+  loginPending: boolean;
+}
+
+export interface ClaudeLoginStart {
+  /** Anthropic authorize URL to open in a browser. */
+  url: string;
+  /** Seconds until the pending sign-in is abandoned server-side. */
+  expiresIn: number;
+}
+
+export interface ClaudeLoginResult {
+  status: "complete" | "error";
+  error?: string;
+  /** Refreshed status, present when the sign-in completed. */
+  auth?: ClaudeAuthStatus;
+}
+
 // ---- AskUserQuestion tool ----
 export interface QuestionOption {
   label: string;

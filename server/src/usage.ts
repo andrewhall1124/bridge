@@ -16,6 +16,12 @@ const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const CACHE_MS = 60_000;
 let cache: { at: number; usage: ClaudeUsage } | null = null;
 
+// Called after a sign-in/sign-out so the next read doesn't reuse a response
+// fetched with the previous token.
+export function resetUsageCache(): void {
+  cache = null;
+}
+
 function readCredentials(): { token: string; subscriptionType: string | null } {
   if (!existsSync(CREDENTIALS_JSON)) {
     throw new Error(

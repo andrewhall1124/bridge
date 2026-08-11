@@ -17,6 +17,7 @@ import { getConfig } from "../config.js";
 import * as userClaude from "../userClaude.js";
 import * as github from "../github.js";
 import * as usage from "../usage.js";
+import * as claudeAuth from "../claudeAuth.js";
 import { randomSessionName } from "../names.js";
 import type { PermissionMode, Repo, Settings } from "../protocol.js";
 
@@ -241,6 +242,47 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.get("/api/usage", async (_req, reply) => {
     try {
       return await usage.getUsage();
+    } catch (err) {
+      return reply.code(502).send({ error: errMsg(err) });
+    }
+  });
+
+  // ---- Claude Code auth ---------------------------------------------------
+  // Lets the owner re-authenticate the subscription from any Bridge device
+  // instead of SSHing into the box to run `claude auth login`.
+  app.get("/api/claude/auth", async () => claudeAuth.getStatus());
+
+  app.post("/api/claude/auth/login", async (_req, reply) => {
+    try {
+      return await claudeAuth.startLogin();
+    } catch (err) {
+      return reply.code(502).send({ error: errMsg(err) });
+    }
+  });
+
+  app.post<{ Body: { code?: string } }>(
+    "/api/claude/auth/code",
+    async (req, reply) => {
+      const code = req.body?.code;
+      if (typeof code !== "string")
+        return reply.code(400).send({ error: "code is required" });
+      try {
+        return await claudeAuth.submitCode(code);
+      } catch (err) {
+        return reply.code(502).send({ error: errMsg(err) });
+      }
+    },
+  );
+
+  app.post("/api/claude/auth/cancel", async () => {
+    claudeAuth.cancelLogin();
+    return { ok: true };
+  });
+
+  app.post("/api/claude/auth/logout", async (_req, reply) => {
+    try {
+      await claudeAuth.signOut();
+      return { ok: true };
     } catch (err) {
       return reply.code(502).send({ error: errMsg(err) });
     }

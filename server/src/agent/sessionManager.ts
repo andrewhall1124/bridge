@@ -96,7 +96,7 @@ function formatAnswers(questions: QuestionItem[], answers: QuestionAnswer[]): st
 const config = getConfig();
 
 // Build the env handed to the Agent SDK so billing follows the configured mode.
-function agentEnv(): Record<string, string | undefined> {
+export function agentEnv(): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = { ...process.env };
   if (config.anthropicApiKey) {
     env.ANTHROPIC_API_KEY = config.anthropicApiKey; // API-key (pay-as-you-go) fallback
