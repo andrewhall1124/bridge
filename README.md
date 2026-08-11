@@ -278,6 +278,14 @@ in the Settings tab (stored in SQLite, seeded from config on first boot).
   10s. Read-only; the token stays server-side and is never sent to the browser. The
   repo→project mapping is stored on the repo; `RAILWAY_ENVIRONMENT` (default `production`)
   sets the environment shown.
+- **Claude sign-in:** **Settings → Account** shows which account Bridge runs sessions
+  under and re-authenticates it from whatever device you're holding, so lapsed
+  credentials no longer mean SSHing into the box. The server drives the real
+  `claude auth login` (under a PTY, since it wants a terminal) rather than
+  reimplementing the OAuth exchange: it hands you the authorize URL and passes the code
+  you paste back to the CLI, which writes its own `~/.claude/.credentials.json`. No
+  token ever reaches the browser. New sessions pick up the credentials immediately; a
+  session already running keeps whatever it started with.
 - **Path safety:** all repo file/diff/commit/discard/usages operations are scoped to the
   repo root and reject any path that escapes it.
 

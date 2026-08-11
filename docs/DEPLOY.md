@@ -27,7 +27,7 @@ nothing exposed to the public internet.
 If you have the [`hcloud` CLI](https://github.com/hetznercloud/cli) (`brew install hcloud`),
 `deploy/provision.sh` + `deploy/cloud-init.yaml` create and bootstrap the box in one
 command — Node, Tailscale, clone, build, systemd, firewall, and (optionally) the CI
-deploy key — leaving only the interactive `claude login`.
+deploy key — leaving only the interactive `claude auth login`.
 
 ```bash
 hcloud context create bridge        # paste a Read&Write API token from the Hetzner console
@@ -41,7 +41,7 @@ Then, over Tailscale:
 
 ```bash
 ssh bridge@bridge.<your-tailnet>.ts.net
-claude login && sudo systemctl restart bridge   # restart (not start) — that's the NOPASSWD-allowed command
+claude auth login && sudo systemctl restart bridge   # restart (not start) — that's the NOPASSWD-allowed command
 ```
 
 Overridable via env: `SERVER_NAME`, `SERVER_TYPE`, `IMAGE`, `LOCATION`, `REPO_URL`,
@@ -112,7 +112,7 @@ PATH, so symlink it first:
 ```bash
 ln -sf "$(find /srv/claude-bridge/node_modules/@anthropic-ai -maxdepth 2 -name claude -type f | head -1)" \
   /usr/local/bin/claude    # run with sudo; the fast path does this automatically
-claude login
+claude auth login
 ```
 
 Create `.env` (binds to loopback; Tailscale serve fronts it with TLS — see step 5b):
@@ -249,9 +249,11 @@ Watch progress in the Actions tab; confirm on the box with `journalctl -u bridge
   unaffected. Verify first that `ssh <user>@<tailnet-ip>` works from a tailnet device.
 - **Billing:** never set `ANTHROPIC_API_KEY` if you want subscription billing. The app
   deletes it from the agent env when no key is configured.
-- **`claude login` expiry:** credentials live in the `bridge` user's home and persist
-  across deploys (deploys only touch the repo). If sessions start failing auth, re-run
-  `claude login` as `bridge`.
+- **Claude credential expiry:** credentials live in the `bridge` user's home and persist
+  across deploys (deploys only touch the repo). If sessions start failing auth, sign in
+  again from **Settings → Account** in the app — no SSH needed. Re-running
+  `claude auth login` as `bridge` on the box does the same thing and remains the
+  fallback if the app itself won't start.
 - **Restart fails in CI with a sudo password prompt:** the sudoers drop-in (§6) is missing
   or the path doesn't match (`which systemctl` — adjust if not `/usr/bin/systemctl`).
 - **`npm ci` fails compiling `better-sqlite3`:** `build-essential` / `python3` missing.

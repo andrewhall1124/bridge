@@ -4,7 +4,7 @@
 # Creates (if missing) an admin SSH key and an optional cloud firewall, renders
 # deploy/cloud-init.yaml with your secrets, and boots a server that bootstraps
 # itself (Node, Tailscale, clone, build, systemd). The only step left afterwards
-# is the interactive `claude login` — the script prints how.
+# is the interactive `claude auth login` — the script prints how.
 #
 # Prereqs:
 #   - hcloud authenticated:  hcloud context create bridge   (paste API token)
@@ -80,6 +80,6 @@ echo "==> Server created. Bootstrap runs on first boot (~2-4 min)."
 echo "    Watch it:   ssh root@\$(hcloud server ip $SERVER_NAME) tail -f /var/log/bridge-bootstrap.log"
 echo "    Then, over Tailscale:"
 echo "      ssh bridge@bridge.<your-tailnet>.ts.net"
-echo "      claude login && sudo systemctl restart bridge"
+echo "      claude auth login && sudo systemctl restart bridge"
 echo "    Once healthy, harden by closing public SSH (see docs/DEPLOY.md):"
 echo "      hcloud firewall delete-rule $FIREWALL_NAME --direction in --protocol tcp --port 22 --source-ips 0.0.0.0/0 --source-ips ::/0"
